@@ -1,0 +1,87 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check for admin role
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Helper function to check for agent role
+    function isAgent() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent';
+    }
+
+    // --- USERS Collection ---
+    match /users/{userId} {
+      // Any authenticated user can create their own user profile document.
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // A user can read their own data. Admins can read any user's data.
+      // An agent can read the data of a user assigned to them.
+      allow read: if request.auth != null && (
+                    request.auth.uid == userId || 
+                    isAdmin() || 
+                    (isAgent() && get(/databases/$(database)/documents/users/$(userId)).data.agentId == request.auth.uid)
+                  );
+      
+      // A user can update their own data. Admins and Agents can update specific fields for users.
+      allow update: if request.auth != null && (
+                      request.auth.uid == userId || 
+                      isAdmin() || 
+                      isAgent()
+                    );
+    }
+
+    // --- BETS Collection ---
+    match /bets/{betId} {
+      // An authenticated user can create their own bet.
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      // A user can read their own bets.
+      // An admin can read all bets.
+      // An agent can read bets from their assigned users.
+      allow read: if request.auth != null && (
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'user' && get(/databases/$(database)/documents/bets/$(betId)).data.userId == request.auth.uid ||
+                    isAdmin() ||
+                    (isAgent() && get(/databases/$(database)/documents/bets/$(betId)).data.agentId == request.auth.uid)
+                  );
+
+      // No one can update or delete bets directly. This is handled by Cloud Functions.
+      allow update, delete: if false;
+    }
+
+    // --- RESULTS, SETTINGS, and HISTORICAL_RESULTS ---
+    // These collections are managed by Cloud Functions or Admins, not directly by clients.
+    match /results/{docId} {
+      allow read: if request.auth != null; // All authenticated users can read results
+      allow write: if isAdmin(); // Only admins can write
+    }
+    
+    match /historical_results/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only backend can write
+    }
+    
+    match /settings/{docId} {
+        allow read: if request.auth != null;
+        allow write: if isAdmin();
+    }
+
+    // --- TRANSACTIONS Collection ---
+    match /transactions/{txId} {
+      // Users can read their own transactions.
+      // Admins and agents can read all transactions.
+      allow read: if request.auth != null && (
+                    get(/databases/$(database)/documents/transactions/$(txId)).data.fromId == request.auth.uid ||
+                    get(/databases/$(database)/documents/transactions/$(txId)).data.toId == request.auth.uid ||
+                    isAdmin() || isAgent()
+                  );
+      allow write: if false; // Only backend can write
+    }
+    
+    // Any other collection is denied by default
+  }
+}
