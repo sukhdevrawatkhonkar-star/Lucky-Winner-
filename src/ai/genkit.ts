@@ -6,5 +6,5 @@ export const ai = genkit({
     googleAI({ aihub: true })
   ],
   logLevel: "debug",
-  enableTracingAndMetrics: true,
+  enableTracingAndMetrics: false,
 });
