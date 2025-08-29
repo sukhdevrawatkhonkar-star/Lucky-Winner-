@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss"
 
 const config = {
@@ -52,16 +53,20 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom colors
-        royalBlue: '#010417',
-        gold: '#DCB673',
-        darkCard: '#0A0A23',
-        lightGray: '#CCCCCC',
+        // Custom colors from style guide
+        royalBlue: 'hsl(var(--background))', // using theme background
+        gold: 'hsl(var(--primary))', // using theme primary
+        darkCard: 'hsl(var(--card))', // using theme card
+        lightGray: 'hsl(var(--muted-foreground))', // using theme muted-foreground
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        sans: ["var(--font-alegreya)", "sans-serif"],
+        cinzel: ["var(--font-cinzel)", "serif"],
       },
       keyframes: {
         "accordion-down": {
@@ -106,10 +111,6 @@ const config = {
         "vortex-spin-medium": "vortex-spin-medium 6s linear infinite",
         "vortex-spin-fast": "vortex-spin-fast 4s linear infinite",
         "vortex-pulse": "vortex-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-      },
-       fontFamily: {
-        sans: ['var(--font-poppins)', 'sans-serif'],
-        cinzel: ['var(--font-cinzel)', 'serif'],
       },
     },
   },
