@@ -1,7 +1,1 @@
-# Luckty-Winner-
-# Lucky-Winner-
-# Lucky-Winner-
-# Lucky-Winner-
-# Lucky-Winner-
-# Lucky-Winner-
-# Lucky-Winner-
+# Next.js App
