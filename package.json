@@ -72,7 +72,6 @@
     "genkit": "1.17.1",
     "@genkit-ai/firebase": "1.17.1",
     "@genkit-ai/googleai": "1.17.1",
-    "@genkit-ai/next": "1.17.1",
-    "google-auth-library": "9.11.0"
+    "@genkit-ai/next": "1.17.1"
   }
 }
