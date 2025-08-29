@@ -1,0 +1,42 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Users Collection ---
+    // Users can read their own profile.
+    // Users can update their own profile (name, mobile, upiId).
+    // Admins and Agents can read/write any user profile.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'mobile', 'upiId']);
+      allow read, write: if request.auth != null && request.auth.token.role in ['admin', 'agent'];
+    }
+
+    // --- Bets, Transactions, Withdrawals, Deposits ---
+    // Users can create their own records.
+    // Users can read their own records.
+    // Admins and Agents can read/write all records.
+    match /{collection}/{docId} where collection in ['bets', 'transactions', 'withdrawals', 'deposits'] {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && request.auth.token.role in ['admin', 'agent'];
+    }
+
+    // --- Results & Settings ---
+    // Anyone can read game results and settings (for payout rates).
+    // Only admins can write to these collections.
+    match /{collection}/{docId} where collection in ['results', 'settings', 'historical_results'] {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.role == 'admin';
+    }
+
+    // --- Result Locks ---
+    // Only admins can write to result locks (used by the cron job).
+    match /result_locks/{lockId} {
+      allow write: if request.auth != null && request.auth.token.role == 'admin';
+      allow read: if request.auth != null && request.auth.token.role in ['admin', 'agent'];
+    }
+  }
+}
