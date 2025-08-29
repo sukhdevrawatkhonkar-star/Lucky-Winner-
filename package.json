@@ -1,3 +1,4 @@
+
 {
   "name": "nextn",
   "version": "0.1.0",
@@ -7,7 +8,7 @@
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
-    "start": "next dev -p 9003",
+    "start": "next start -p 9003",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },
@@ -45,7 +46,7 @@
     "firebase-admin": "^12.1.1",
     "genkit": "1.17.1",
     "lucide-react": "^0.395.0",
-    "next": "15.0.0-rc.0",
+    "next": "^15.0.0",
     "papaparse": "^5.4.1",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
@@ -71,6 +72,7 @@
     "genkit": "1.17.1",
     "@genkit-ai/firebase": "1.17.1",
     "@genkit-ai/googleai": "1.17.1",
-    "@genkit-ai/next": "1.17.1"
+    "@genkit-ai/next": "1.17.1",
+    "google-auth-library": "9.11.0"
   }
 }
