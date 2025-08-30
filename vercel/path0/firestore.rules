@@ -4,39 +4,67 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Users Collection ---
-    // Users can read their own profile.
-    // Users can update their own profile (name, mobile, upiId).
-    // Admins and Agents can read/write any user profile.
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is an admin
+    function isAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Helper function to check if the user is an agent
+    function isAgent() {
+        return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent';
+    }
+
+    // Users can read/write their own profile, admins/agents can manage users under them
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'mobile', 'upiId']);
-      allow read, write: if request.auth != null && request.auth.token.role in ['admin', 'agent'];
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || (isAgent() && resource.data.agentId == request.auth.uid));
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isAgent());
+      allow create: if isAdmin() || isAgent() || !exists(/databases/$(database)/documents/users/$(userId)); // Allows public registration and admin/agent creation
+      allow delete: if isAdmin() || isAgent();
     }
 
-    // --- Bets, Transactions, Withdrawals, Deposits ---
-    // Users can create their own records.
-    // Users can read their own records.
-    // Admins and Agents can read/write all records.
-    match /{collection}/{docId} where collection in ['bets', 'transactions', 'withdrawals', 'deposits'] {
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow read, write: if request.auth != null && request.auth.token.role in ['admin', 'agent'];
+    // Bets: Users can create bets. Admins/agents can read bets.
+    match /bets/{betId} {
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin() || (isAgent() && resource.data.agentId == request.auth.uid));
+      // No updates or deletes allowed to maintain integrity
     }
 
-    // --- Results & Settings ---
-    // Anyone can read game results and settings (for payout rates).
-    // Only admins can write to these collections.
-    match /{collection}/{docId} where collection in ['results', 'settings', 'historical_results'] {
+    // Transactions: Only readable by involved parties or admins/agents
+    match /transactions/{txId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.fromId || request.auth.uid == resource.data.toId || isAdmin() || isAgent());
+      // No one can create/update/delete transactions directly. They are created by server actions.
+    }
+    
+    // Deposit/Withdrawal Requests: Users can create, admins/agents can read.
+    match /deposits/{depositId} {
+        allow create: if isAuthenticated();
+        allow read: if isAdmin() || (isAgent() && resource.data.agentId == request.auth.uid);
+    }
+    match /withdrawals/{withdrawalId} {
+        allow create: if isAuthenticated();
+        allow read: if isAdmin() || (isAgent() && resource.data.agentId == request.auth.uid);
+    }
+
+    // Publicly readable collections
+    match /results/{lotteryName} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.role == 'admin';
+    }
+     match /historical_results/{docId} {
+      allow read: if true;
     }
 
-    // --- Result Locks ---
-    // Only admins can write to result locks (used by the cron job).
-    match /result_locks/{lockId} {
-      allow write: if request.auth != null && request.auth.token.role == 'admin';
-      allow read: if request.auth != null && request.auth.token.role in ['admin', 'agent'];
+    match /settings/payoutRates {
+      allow read: if true;
+    }
+    
+    // Admins have full access to all other collections
+    match /{document=**} {
+      allow read, write: if isAdmin();
     }
   }
 }

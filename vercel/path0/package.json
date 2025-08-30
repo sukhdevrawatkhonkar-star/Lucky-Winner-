@@ -59,7 +59,6 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@opentelemetry/winston-transport": "^0.48.0",
     "@types/node": "^20",
     "@types/papaparse": "^5.3.14",
     "@types/react": "^18.3.3",
