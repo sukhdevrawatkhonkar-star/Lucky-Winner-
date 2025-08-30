@@ -2,12 +2,13 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { IndianRupee, Users, Ticket, Landmark, RefreshCw } from "lucide-react";
+import { IndianRupee, Users, Ticket, Landmark, RefreshCw, HandCoins, ArrowDown } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { getDashboardStats } from '@/app/actions';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
 
 interface DashboardStats {
@@ -15,6 +16,8 @@ interface DashboardStats {
     totalAgents: number;
     totalBets: number;
     totalRevenue: number;
+    pendingDeposits: number;
+    pendingWithdrawals: number;
 }
 
 export default function AdminDashboard() {
@@ -45,6 +48,8 @@ export default function AdminDashboard() {
 
       {loading && !stats ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
           <Skeleton className="h-28" />
           <Skeleton className="h-28" />
           <Skeleton className="h-28" />
@@ -108,6 +113,38 @@ export default function AdminDashboard() {
               </p>
             </CardContent>
           </Card>
+           <Link href="/admin/deposits">
+             <Card className="hover:bg-muted/50 transition-colors">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-amber-500">
+                    Pending Deposits
+                  </CardTitle>
+                  <ArrowDown className="h-4 w-4 text-amber-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.pendingDeposits ?? 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Requests awaiting approval
+                  </p>
+                </CardContent>
+              </Card>
+           </Link>
+           <Link href="/admin/withdrawals">
+             <Card className="hover:bg-muted/50 transition-colors">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-emerald-500">
+                    Pending Withdrawals
+                  </CardTitle>
+                  <HandCoins className="h-4 w-4 text-emerald-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.pendingWithdrawals ?? 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Requests awaiting processing
+                  </p>
+                </CardContent>
+              </Card>
+           </Link>
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -9,7 +9,7 @@ import { listUsers, updateUserStatus, deleteUser, createUser, updateUserAgent } 
 import { UserProfile } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { IndianRupee, RefreshCw, UserPlus } from 'lucide-react';
+import { IndianRupee, RefreshCw, UserPlus, Search } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui/alert-dialog"
 import {
   Dialog,
   DialogContent,
@@ -221,24 +221,50 @@ function ChangeAgentDialog({ user, onAgentChanged }: { user: UserProfile, onAgen
 export default function UsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchField, setSearchField] = useState<'customId' | 'email' | 'mobile'>('customId');
+  const [agentFilter, setAgentFilter] = useState('all');
+  const [agents, setAgents] = useState<UserProfile[]>([]);
+
   const { toast } = useToast();
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsersAndAgents = useCallback(async () => {
     setLoading(true);
-    const userList = await listUsers('user');
+    const [userList, agentList] = await Promise.all([
+        listUsers('user'),
+        listUsers('agent')
+    ]);
     setUsers(userList);
+    setAgents(agentList);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    fetchUsersAndAgents();
+  }, [fetchUsersAndAgents]);
+
+
+  const filteredUsers = useMemo(() => {
+    return users
+      .filter(user => {
+        if (agentFilter === 'all') return true;
+        if (agentFilter === 'no-agent') return !user.agentId;
+        return user.agentId === agentFilter;
+      })
+      .filter(user => {
+        const term = searchTerm.toLowerCase();
+        if (!term) return true;
+        
+        const fieldValue = user[searchField]?.toLowerCase() || '';
+        return fieldValue.includes(term);
+    });
+  }, [users, searchTerm, searchField, agentFilter]);
 
   const handleStatusChange = async (uid: string, disabled: boolean) => {
     const result = await updateUserStatus(uid, disabled);
     if (result.success) {
       toast({ title: 'Success', description: result.message });
-      fetchUsers();
+      fetchUsersAndAgents();
     } else {
       toast({ title: 'Error', description: result.message, variant: 'destructive' });
     }
@@ -248,7 +274,7 @@ export default function UsersPage() {
     const result = await deleteUser(uid);
     if (result.success) {
       toast({ title: 'Success', description: result.message });
-      fetchUsers();
+      fetchUsersAndAgents();
     } else {
       toast({ title: 'Error', description: result.message, variant: 'destructive' });
     }
@@ -259,8 +285,8 @@ export default function UsersPage() {
         <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold">Manage Users</h1>
             <div className='flex items-center gap-2'>
-                 <CreateUserDialog onUserCreated={fetchUsers} />
-                 <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
+                 <CreateUserDialog onUserCreated={fetchUsersAndAgents} />
+                 <Button variant="outline" size="sm" onClick={fetchUsersAndAgents} disabled={loading}>
                     <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
                     <span className="ml-2 hidden sm:inline">Refresh</span>
                 </Button>
@@ -271,6 +297,40 @@ export default function UsersPage() {
         <CardHeader>
           <CardTitle>User List</CardTitle>
           <CardDescription>A list of all registered user accounts.</CardDescription>
+          <div className="flex flex-wrap items-center gap-2 pt-4">
+                <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
+                    <Input
+                        placeholder="Search..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="max-w-xs"
+                    />
+                    <Select value={searchField} onValueChange={(value: any) => setSearchField(value)}>
+                        <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="By..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="customId">ID</SelectItem>
+                            <SelectItem value="email">Email</SelectItem>
+                            <SelectItem value="mobile">Mobile</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                 <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
+                    <Select value={agentFilter} onValueChange={setAgentFilter}>
+                        <SelectTrigger className="w-full sm:w-[220px]">
+                             <SelectValue placeholder="Filter by Agent" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Agents</SelectItem>
+                            <SelectItem value="no-agent">Admin / No Agent</SelectItem>
+                            {agents.map(agent => (
+                                <SelectItem key={agent.uid} value={agent.uid}>{agent.name} ({agent.customId})</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                 </div>
+            </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -281,6 +341,7 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead>Customer ID</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Mobile</TableHead>
                   <TableHead>Assigned Agent</TableHead>
                   <TableHead>Total Wallet</TableHead>
                   <TableHead>Wallet Limit</TableHead>
@@ -289,15 +350,16 @@ export default function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.length === 0 ? (
+                {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center">No users found.</TableCell>
+                    <TableCell colSpan={8} className="text-center">No users found.</TableCell>
                   </TableRow>
                 ) : (
-                  users.map((user) => (
+                  filteredUsers.map((user) => (
                     <TableRow key={user.uid}>
                       <TableCell className="font-mono">{user.customId}</TableCell>
                       <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.mobile || 'N/A'}</TableCell>
                       <TableCell>{user.agentCustomId || 'Admin'}</TableCell>
                       <TableCell className="font-mono font-bold">
                         <IndianRupee className="inline-block h-3.5 w-3.5 mr-1" />
@@ -312,9 +374,9 @@ export default function UsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <ManageWalletDialog user={user} onUpdate={fetchUsers} />
-                        <SetWalletLimitDialog user={user} onUpdate={fetchUsers} />
-                        <ChangeAgentDialog user={user} onAgentChanged={fetchUsers} />
+                        <ManageWalletDialog user={user} onUpdate={fetchUsersAndAgents} />
+                        <SetWalletLimitDialog user={user} onUpdate={fetchUsersAndAgents} />
+                        <ChangeAgentDialog user={user} onAgentChanged={fetchUsersAndAgents} />
                         <Button
                           variant="outline"
                           size="sm"
@@ -351,5 +413,3 @@ export default function UsersPage() {
     </div>
   );
 }
-
-    

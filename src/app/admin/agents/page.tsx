@@ -11,7 +11,7 @@ import { createAgent, listUsers, updateUserStatus, deleteUser } from '@/app/acti
 import { UserProfile } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { IndianRupee, RefreshCw } from 'lucide-react';
+import { IndianRupee, RefreshCw, Search } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { cn } from '@/lib/utils';
 import { ManageWalletDialog, SetWalletLimitDialog } from '@/components/shared/UserActionsDialogs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 function CreateAgentCard({ onAgentCreated }: { onAgentCreated: () => void }) {
@@ -140,19 +141,34 @@ function CreateAgentCard({ onAgentCreated }: { onAgentCreated: () => void }) {
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<UserProfile[]>([]);
+  const [filteredAgents, setFilteredAgents] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchField, setSearchField] = useState<'customId' | 'email' | 'mobile'>('customId');
   const { toast } = useToast();
 
   const fetchAgents = useCallback(async () => {
     setLoading(true);
     const agentList = await listUsers('agent');
     setAgents(agentList);
+    setFilteredAgents(agentList);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     fetchAgents();
   }, [fetchAgents]);
+
+  useEffect(() => {
+    const results = agents.filter(agent => {
+        const term = searchTerm.toLowerCase();
+        if (!term) return true;
+
+        const fieldValue = agent[searchField]?.toLowerCase() || '';
+        return fieldValue.includes(term);
+    });
+    setFilteredAgents(results);
+  }, [searchTerm, searchField, agents]);
 
   const handleStatusChange = async (uid: string, disabled: boolean) => {
     const result = await updateUserStatus(uid, disabled);
@@ -191,6 +207,25 @@ export default function AgentsPage() {
         <CardHeader>
           <CardTitle>Agent List</CardTitle>
           <CardDescription>A list of all registered agent accounts.</CardDescription>
+           <div className="flex items-center gap-2 pt-4">
+                <Input
+                    placeholder="Search agents..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="max-w-sm"
+                />
+                <Select value={searchField} onValueChange={(value: any) => setSearchField(value)}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Search by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="customId">Agent ID</SelectItem>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="mobile">Mobile</SelectItem>
+                    </SelectContent>
+                </Select>
+                 <Button variant="outline"><Search className="h-4 w-4" /></Button>
+            </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -201,6 +236,7 @@ export default function AgentsPage() {
                 <TableRow>
                   <TableHead>Agent ID</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Mobile</TableHead>
                   <TableHead>Total Wallet</TableHead>
                   <TableHead>Wallet Limit</TableHead>
                   <TableHead>Status</TableHead>
@@ -209,15 +245,16 @@ export default function AgentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {agents.length === 0 ? (
+                {filteredAgents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center">No agents found.</TableCell>
+                    <TableCell colSpan={8} className="text-center">No agents found.</TableCell>
                   </TableRow>
                 ) : (
-                  agents.map((agent) => (
+                  filteredAgents.map((agent) => (
                     <TableRow key={agent.uid}>
                       <TableCell className="font-mono">{agent.customId}</TableCell>
                       <TableCell>{agent.email}</TableCell>
+                      <TableCell>{agent.mobile || 'N/A'}</TableCell>
                       <TableCell className='flex items-center font-bold'>
                          <IndianRupee className="h-4 w-4 mr-1"/> {agent.walletBalance?.toFixed(2) || '0.00'}
                       </TableCell>
@@ -269,5 +306,3 @@ export default function AgentsPage() {
     </div>
   );
 }
-
-    

@@ -208,7 +208,7 @@ export async function getHistoricalResults(gameName: string): Promise<LotteryRes
 export async function getDashboardStats(agentId?: string): Promise<any> {
     try {
         const currentUser = await getAuthorizedUser();
-        if (!currentUser) return { totalUsers: 0, totalAgents: 0, totalBets: 0, totalRevenue: 0, totalCommission: 0 };
+        if (!currentUser) return { totalUsers: 0, totalAgents: 0, totalBets: 0, totalRevenue: 0, totalCommission: 0, pendingDeposits: 0, pendingWithdrawals: 0 };
         
         if (agentId && currentUser.role === 'agent' && currentUser.uid === agentId) {
             // Agent stats
@@ -229,6 +229,8 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
             const usersSnapshot = await adminDb.collection('users').where('role', '==', 'user').get();
             const agentsSnapshot = await adminDb.collection('users').where('role', '==', 'agent').get();
             const betsSnapshot = await adminDb.collection('bets').get();
+            const pendingDepositsSnapshot = await adminDb.collection('deposits').where('status', '==', 'pending').get();
+            const pendingWithdrawalsSnapshot = await adminDb.collection('withdrawals').where('status', '==', 'pending').get();
             
             const totalRevenue = betsSnapshot.docs.reduce((acc, doc) => acc + doc.data().amount, 0);
             
@@ -236,15 +238,17 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
                 totalUsers: usersSnapshot.size,
                 totalAgents: agentsSnapshot.size,
                 totalBets: betsSnapshot.size,
-                totalRevenue: totalRevenue
+                totalRevenue: totalRevenue,
+                pendingDeposits: pendingDepositsSnapshot.size,
+                pendingWithdrawals: pendingWithdrawalsSnapshot.size
             };
         }
         // If not an admin and trying to fetch general stats, or if agentId doesn't match, return empty.
-        return { totalUsers: 0, totalAgents: 0, totalBets: 0, totalRevenue: 0, totalCommission: 0 };
+        return { totalUsers: 0, totalAgents: 0, totalBets: 0, totalRevenue: 0, totalCommission: 0, pendingDeposits: 0, pendingWithdrawals: 0 };
 
     } catch (error) {
         console.error("Error fetching dashboard stats:", error);
-        return { totalUsers: 0, totalAgents: 0, totalBets: 0, totalRevenue: 0, totalCommission: 0 };
+        return { totalUsers: 0, totalAgents: 0, totalBets: 0, totalRevenue: 0, totalCommission: 0, pendingDeposits: 0, pendingWithdrawals: 0 };
     }
 }
 
