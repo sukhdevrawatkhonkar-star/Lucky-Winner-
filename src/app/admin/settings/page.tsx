@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,7 @@ export default function SettingsPage() {
     const [upiId, setUpiId] = useState('');
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
 
     useEffect(() => {
@@ -41,20 +41,20 @@ export default function SettingsPage() {
         fetchSettings();
     }, []);
 
-    const handleSave = async () => {
-        setSaving(true);
-        const commissionRate = commission / 100; // Convert back to decimal for storage
-        const numericRates = Object.fromEntries(
-            Object.entries(rates).map(([key, value]) => [key, Number(value)])
-        ) as Record<BetType, number>;
+    const handleSave = () => {
+        startTransition(async () => {
+            const commissionRate = commission / 100; // Convert back to decimal for storage
+            const numericRates = Object.fromEntries(
+                Object.entries(rates).map(([key, value]) => [key, Number(value)])
+            ) as Record<BetType, number>;
 
-        const result = await updateGameSettings(numericRates, commissionRate, upiId, qrCodeUrl);
-        if (result.success) {
-            toast({ title: 'Success', description: result.message });
-        } else {
-            toast({ title: 'Error', description: result.message, variant: 'destructive' });
-        }
-        setSaving(false);
+            const result = await updateGameSettings(numericRates, commissionRate, upiId, qrCodeUrl);
+            if (result.success) {
+                toast({ title: 'Success', description: result.message });
+            } else {
+                toast({ title: 'Error', description: result.message, variant: 'destructive' });
+            }
+        });
     };
 
     if (loading) {
@@ -148,8 +148,8 @@ export default function SettingsPage() {
             </Card>
 
              <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={saving}>
-                    {saving ? <Loader2 className="animate-spin" /> : 'Save Settings'}
+                <Button onClick={handleSave} disabled={isPending}>
+                    {isPending ? <Loader2 className="animate-spin" /> : 'Save Settings'}
                 </Button>
             </div>
         </div>

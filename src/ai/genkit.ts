@@ -10,6 +10,5 @@ export const ai = genkit({
     googleAI(),
     // The firebase plugin is initialized with enableFirebaseTelemetry()
   ],
-  logLevel: "debug",
   enableTracingAndMetrics: true,
 });
