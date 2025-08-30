@@ -1,7 +1,13 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // any configuration options you need can go here
+    webpack: (config, { isServer }) => {
+        // Exclude Handlebars from the server-side bundle
+        if (isServer) {
+            config.externals.push('handlebars');
+        }
+        return config;
+    }
 };
 
 export default nextConfig;
