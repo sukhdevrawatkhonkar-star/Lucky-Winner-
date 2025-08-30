@@ -2,7 +2,7 @@
 'use server';
 
 import { adminAuth, adminDb, FieldValue } from '@/lib/firebase/admin';
-import type { UserProfile, UserRole, Transaction, Bet, BetType, WithdrawalRequest, GameSettings, DepositRequest } from '@/lib/types';
+import type { UserProfile, UserRole, Transaction, Bet, BetType, WithdrawalRequest, GameSettings, DepositRequest, LotteryResult } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { HttpsError } from 'firebase-functions/v1/auth';

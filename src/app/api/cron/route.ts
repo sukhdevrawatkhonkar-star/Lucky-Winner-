@@ -20,7 +20,9 @@ const getGameSettings = async () => {
                 single_panna: 150,
                 double_panna: 300,
                 triple_panna: 1000,
-                starline: 9.5
+                starline: 9.5,
+                half_sangam: 1000,
+                full_sangam: 10000,
             },
             commission: 0.05 // 5%
         };
