@@ -44,7 +44,7 @@ The user's favorite number is {{{favoriteNumber}}}. Try to incorporate it or num
 The user's birth date is {{{birthDate}}}. Use this for some light-hearted astrological or numerological reasoning.
 {{/if}}
 
-Generate 5 distinct numbers between 1 and 70.
+Generate 5 distinct numbers between 0 and 99.
 
 Your analysis should be encouraging and entertaining.
 

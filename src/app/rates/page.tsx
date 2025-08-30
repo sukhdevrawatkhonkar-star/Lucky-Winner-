@@ -3,7 +3,7 @@ import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getGameSettings } from '@/app/actions';
-import { IndianRupee, Scale } from 'lucide-react';
+import { Scale } from 'lucide-react';
 
 const formatLabel = (betType: string) => {
     return betType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
