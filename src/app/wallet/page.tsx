@@ -21,10 +21,10 @@ import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
 
-function DepositDialog({ agentCustomId, upiId, qrCodeUrl, onDepositRequested }: { agentCustomId?: string, upiId?: string, qrCodeUrl?: string, onDepositRequested: () => void }) {
+// SIMPLIFIED DEPOSIT DIALOG FOR DIRECT PAYMENT INTEGRATION
+function DepositDialog({ onDepositRequested }: { onDepositRequested: () => void }) {
     const [open, setOpen] = useState(false);
     const [amount, setAmount] = useState('');
-    const [transactionId, setTransactionId] = useState('');
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
@@ -34,99 +34,71 @@ function DepositDialog({ agentCustomId, upiId, qrCodeUrl, onDepositRequested }: 
             toast({ title: "Invalid Amount", description: "Please enter a valid amount.", variant: "destructive" });
             return;
         }
-        if (!transactionId.trim()) {
-            toast({ title: "Invalid Transaction ID", description: "Please enter the transaction ID from your payment.", variant: "destructive" });
-            return;
-        }
 
         setLoading(true);
-        const result = await createDepositRequest(depositAmount, transactionId);
+        
+        // In a real scenario, you would redirect to a payment gateway here.
+        // For now, we simulate a successful payment and create a deposit request automatically.
+        const simulatedTransactionId = `PAY_${Date.now()}`;
+
+        const result = await createDepositRequest(depositAmount, simulatedTransactionId);
         setLoading(false);
 
         if (result.success) {
             toast({
-                title: "Request Submitted",
-                description: result.message
+                title: "Payment Successful",
+                description: "Your deposit request has been submitted and is pending approval."
             });
             setAmount('');
-            setTransactionId('');
-            setOpen(false); // Close dialog on success
+            setOpen(false);
             onDepositRequested();
         } else {
              toast({
-                title: "Request Failed",
+                title: "Payment Failed",
                 description: result.message,
                 variant: "destructive"
             });
         }
     }
 
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                 <Button size="lg" className="h-auto py-4">
+                 <Button size="lg" className="h-auto py-4 w-full">
                     <ArrowDown className="mr-2 h-6 w-6"/>
                     <div>
-                        <p className="font-bold text-lg">Deposit</p>
-                        <p className="font-normal text-xs">Add funds to your wallet</p>
+                        <p className="font-bold text-lg">Add Funds</p>
+                        <p className="font-normal text-xs">Instant deposit via UPI</p>
                     </div>
                 </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Deposit Funds</DialogTitle>
+                    <DialogTitle>Add Funds to Wallet</DialogTitle>
+                    <DialogDescription>
+                        Enter the amount you wish to add. You will be redirected to complete the payment.
+                    </DialogDescription>
                 </DialogHeader>
-                 <div className="py-4 space-y-4 text-center">
-                    {agentCustomId ? (
-                        <div>
-                            <DialogDescription>
-                                To add funds to your wallet, please contact your assigned agent directly.
-                            </DialogDescription>
-                            <div className="mt-4 p-4 bg-muted rounded-lg">
-                                <h3 className="font-semibold text-lg">Your Agent's ID</h3>
-                                <p className="font-mono text-xl tracking-widest text-primary bg-background p-2 rounded-md inline-block mt-2">{agentCustomId}</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <div>
-                            <DialogDescription>
-                                Use the details below to make a payment, then submit a deposit request.
-                            </DialogDescription>
-                            {qrCodeUrl ? (
-                                <div className="w-40 h-40 relative my-2 mx-auto">
-                                    <Image src={qrCodeUrl} alt="UPI QR Code" layout="fill" objectFit="contain" />
-                                </div>
-                            ) : (
-                                <div className="w-40 h-40 bg-muted my-2 mx-auto flex items-center justify-center rounded-lg">
-                                    <p className="text-muted-foreground text-sm">QR Code not available</p>
-                                </div>
-                            )}
-                        
-                            {upiId && <p>UPI ID: <span className="font-mono bg-muted p-1 rounded-md">{upiId}</span></p>}
-                            
-                            <div className="space-y-4 text-left mt-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="deposit-amount">Amount</Label>
-                                    <Input id="deposit-amount" type="number" placeholder="Enter amount paid" value={amount} onChange={e => setAmount(e.target.value)} disabled={loading}/>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="txn-id">Transaction ID</Label>
-                                    <Input id="txn-id" type="text" placeholder="Enter UPI Transaction ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} disabled={loading}/>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                 <div className="py-4 space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="deposit-amount">Amount (INR)</Label>
+                        <Input 
+                            id="deposit-amount" 
+                            type="number" 
+                            placeholder="Enter amount" 
+                            value={amount} 
+                            onChange={e => setAmount(e.target.value)} 
+                            disabled={loading}
+                        />
+                    </div>
                 </div>
                  <DialogFooter>
                     <DialogClose asChild>
                         <Button variant="outline">Cancel</Button>
                     </DialogClose>
-                    {!agentCustomId && (
-                         <Button onClick={handleDeposit} disabled={loading || !amount || !transactionId}>
-                            {loading ? <Loader2 className="animate-spin" /> : "Submit Request"}
-                        </Button>
-                    )}
+                    <Button onClick={handleDeposit} disabled={loading || !amount}>
+                        {loading ? <Loader2 className="animate-spin" /> : "Proceed to Pay"}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -174,7 +146,7 @@ function WithdrawDialog({ cashBalance, onWithdrawalRequested }: { cashBalance: n
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                 <Button size="lg" variant="secondary" className="h-auto py-4">
+                 <Button size="lg" variant="secondary" className="h-auto py-4 w-full">
                     <ArrowUp className="mr-2 h-6 w-6"/>
                     <div>
                         <p className="font-bold text-lg">Withdraw</p>
@@ -190,13 +162,17 @@ function WithdrawDialog({ cashBalance, onWithdrawalRequested }: { cashBalance: n
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-4">
-                    <Input
-                        type="number"
-                        placeholder="Enter amount to withdraw"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        disabled={loading}
-                    />
+                     <div className="space-y-2">
+                        <Label htmlFor="withdraw-amount">Amount (INR)</Label>
+                        <Input
+                            id="withdraw-amount"
+                            type="number"
+                            placeholder="Enter amount to withdraw"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            disabled={loading}
+                        />
+                    </div>
                      <DialogFooter>
                         <DialogClose asChild>
                             <Button variant="outline">Cancel</Button>
@@ -215,7 +191,6 @@ function WithdrawDialog({ cashBalance, onWithdrawalRequested }: { cashBalance: n
 export default function UserWalletPage() {
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [settings, setSettings] = useState<{ upiId?: string, qrCodeUrl?: string }>({});
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const router = useRouter();
@@ -224,8 +199,6 @@ export default function UserWalletPage() {
         setLoading(true);
         const fetchedTransactions = await listTransactions(user.uid, 'user');
         setTransactions(fetchedTransactions);
-        const gameSettings = await getGameSettings();
-        setSettings({ upiId: gameSettings.upiId, qrCodeUrl: gameSettings.qrCodeUrl });
         setLoading(false);
     }, []);
 
@@ -307,7 +280,7 @@ export default function UserWalletPage() {
                 </div>
                 
                 <div className="grid gap-4 md:grid-cols-2 mb-6">
-                    {userProfile && <DepositDialog agentCustomId={userProfile.agentCustomId} upiId={settings.upiId} qrCodeUrl={settings.qrCodeUrl} onDepositRequested={handleRefresh} />}
+                    {userProfile && <DepositDialog onDepositRequested={handleRefresh} />}
                     {userProfile && <WithdrawDialog cashBalance={userProfile.cashBalance} onWithdrawalRequested={handleRefresh} />}
                 </div>
 
@@ -409,9 +382,7 @@ export default function UserWalletPage() {
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className={`text-right font-medium ${variant === 'destructive' ? 'text-red-400' : 'text-green-400'}`}>
-                                                    {variant === 'destructive' ? '-' : '+'}
-                                                    <IndianRupee className="inline-block h-3 w-3 mx-1"/>
-                                                    {amount.toFixed(2)}
+                                                    {variant === 'destructive' ? '-' : '+'}<IndianRupee className="inline-block h-3 w-3 mx-1"/>{amount.toFixed(2)}
                                                 </TableCell>
                                             </TableRow>
                                         )
