@@ -11,7 +11,7 @@ import Papa from 'papaparse';
 // --- Helper Functions ---
 
 const getAuthorizedUser = async (authToken?: string): Promise<{ uid: string; role: UserRole; email: string; customId: string; } | null> => {
-    const headerList = await headers();
+    const headerList = headers();
     const token = authToken || headerList.get('Authorization')?.split('Bearer ')[1];
     
     if (!token) {
@@ -1056,6 +1056,3 @@ export async function processBankStatement(
         return { success: false, message: 'Failed to parse or process the file. Please ensure it is a valid CSV.', processedCount: 0, notFoundCount: 0 };
     }
 }
-
-
-    
