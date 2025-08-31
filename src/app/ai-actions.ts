@@ -3,6 +3,7 @@
 
 import { getHistoricalAnalysis, HistoricalAnalysisInput, HistoricalAnalysisOutput } from '@/ai/flows/historical-result-analysis';
 import { getSupportResponse, CustomerSupportInput, CustomerSupportOutput } from '@/ai/flows/customer-support-flow';
+import { getLuckyNumbers, LuckyNumberInput, LuckyNumberOutput } from '@/ai/flows/lucky-number-flow';
 
 
 export async function getResultAnalysisAI(input: HistoricalAnalysisInput): Promise<HistoricalAnalysisOutput> {
@@ -22,5 +23,15 @@ export async function getAIChatResponse(input: CustomerSupportInput): Promise<Cu
     } catch (error) {
         console.error("Error in getAIChatResponse:", error);
         throw new Error("Failed to get AI response. Please try again.");
+    }
+}
+
+export async function getLuckyNumbersAI(input: LuckyNumberInput): Promise<LuckyNumberOutput> {
+    try {
+        const result = await getLuckyNumbers(input);
+        return result;
+    } catch (error) {
+        console.error("Error in getLuckyNumbers:", error);
+        throw new Error("Failed to get lucky numbers. Please try again.");
     }
 }

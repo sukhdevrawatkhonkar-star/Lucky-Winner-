@@ -11,7 +11,8 @@ import Papa from 'papaparse';
 // --- Helper Functions ---
 
 const getAuthorizedUser = async (authToken?: string): Promise<{ uid: string; role: UserRole; email: string; customId: string; } | null> => {
-    const token = authToken || headers().get('Authorization')?.split('Bearer ')[1];
+    const headerList = await headers();
+    const token = authToken || headerList.get('Authorization')?.split('Bearer ')[1];
     
     if (!token) {
         console.error('Unauthorized: No token provided.');
