@@ -52,20 +52,11 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom colors from style guide
-        royalBlue: 'hsl(var(--background))', // using theme background
-        gold: 'hsl(var(--primary))', // using theme primary
-        darkCard: 'hsl(var(--card))', // using theme card
-        lightGray: 'hsl(var(--muted-foreground))', // using theme muted-foreground
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-      },
-      fontFamily: {
-        sans: ["var(--font-sans)", "sans-serif"],
-        cinzel: ["Cinzel", "serif"],
       },
       keyframes: {
         "accordion-down": {
@@ -76,40 +67,10 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "marquee": {
-          '0%': { transform: 'translateX(0%)' },
-          '100%': { transform: 'translateX(-100%)' },
-        },
-        "marquee2": {
-            '0%': { transform: 'translateX(100%)' },
-            '100%': { transform: 'translateX(0%)' },
-        },
-        "vortex-spin-slow": {
-          '0%': { transform: 'rotate(0deg)' },
-          '100%': { transform: 'rotate(360deg)' },
-        },
-        "vortex-spin-medium": {
-          '0%': { transform: 'rotate(0deg)' },
-          '100%': { transform: 'rotate(-360deg)' },
-        },
-         "vortex-spin-fast": {
-          '0%': { transform: 'rotate(0deg)' },
-          '100%': { transform: 'rotate(360deg)' },
-        },
-        "vortex-pulse": {
-          '0%, 100%': { opacity: '0.7', transform: 'scale(1)' },
-          '50%': { opacity: '1', transform: 'scale(1.05)' },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "marquee": "marquee 25s linear infinite",
-        "marquee2": "marquee2 25s linear infinite",
-        "vortex-spin-slow": "vortex-spin-slow 8s linear infinite",
-        "vortex-spin-medium": "vortex-spin-medium 6s linear infinite",
-        "vortex-spin-fast": "vortex-spin-fast 4s linear infinite",
-        "vortex-pulse": "vortex-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
     },
   },
