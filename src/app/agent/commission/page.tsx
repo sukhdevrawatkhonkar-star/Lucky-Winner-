@@ -19,7 +19,7 @@ export default function CommissionPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">My Commission</h1>
-       <Card>
+      <Card>
         <CardHeader>
           <CardTitle>Commission History</CardTitle>
         </CardHeader>
