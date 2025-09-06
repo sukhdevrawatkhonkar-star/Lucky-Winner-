@@ -1,10 +1,9 @@
-
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card"
+  } from "@/components/ui/card"
 import { DollarSign, Users, Ticket, Percent } from "lucide-react";
 
 export default function AgentDashboard() {
