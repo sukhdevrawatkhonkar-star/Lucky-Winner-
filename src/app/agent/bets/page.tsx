@@ -1,99 +1,58 @@
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { listBets } from '@/app/actions';
-import { Bet } from '@/lib/types';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { IndianRupee, Loader2 } from 'lucide-react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+// This would come from your database, filtered for the current agent's users
+const agentBetsData = [
+  { id: "BET001", userId: "USER01", gameId: "GAME101", number: 42, amount: 10, status: "won" },
+  { id: "BET002", userId: "USER02", gameId: "GAME101", number: 7, amount: 5, status: "lost" },
+  { id: "BET003", userId: "USER01", gameId: "GAME102", number: 19, amount: 20, status: "placed" },
+];
 
 export default function AgentBetsPage() {
-    const [bets, setBets] = useState<Bet[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [agent, setAgent] = useState<User | null>(null);
-
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentAgent) => {
-            if (currentAgent) {
-                setAgent(currentAgent);
-            } else {
-                setAgent(null);
-            }
-        });
-        return () => unsubscribe();
-    }, []);
-
-    useEffect(() => {
-        async function fetchBets() {
-            if (!agent) return;
-            setLoading(true);
-            const fetchedBets = await listBets(undefined, agent.uid); // Pass agentId
-            setBets(fetchedBets);
-            setLoading(false);
-        }
-        if (agent) {
-            fetchBets();
-        }
-    }, [agent]);
-
-    return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-bold">My User Bets</h1>
-            <Card>
-                <CardHeader>
-                    <CardTitle>All Bets from My Users</CardTitle>
-                    <CardDescription>A real-time list of all bets placed by users registered under you.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <div className="flex justify-center items-center py-10">
-                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                        </div>
-                    ) : bets.length === 0 ? (
-                        <p className="text-muted-foreground text-center">Your users have not placed any bets yet.</p>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>User</TableHead>
-                                    <TableHead>Game</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Numbers</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Amount (Coins)</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {bets.map((bet) => (
-                                    <TableRow key={bet.id}>
-                                        <TableCell>{new Date(bet.createdAt).toLocaleString()}</TableCell>
-                                        <TableCell>{bet.userEmail}</TableCell>
-                                        <TableCell>{bet.lotteryName}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="secondary" className="capitalize">{bet.betType.replace(/_/g, ' ')}</Badge>
-                                        </TableCell>
-                                        <TableCell className="font-mono">{bet.numbers}</TableCell>
-                                        <TableCell>
-                                            <Badge className="capitalize" variant={bet.status === 'placed' ? 'default' : bet.status === 'won' ? 'secondary' : 'destructive'}>
-                                                {bet.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right font-medium">
-                                            <IndianRupee className="inline-block h-3 w-3 mr-1"/>
-                                            {bet.amount.toFixed(2)}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    );
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-4">User Bets</h1>
+       <Card>
+        <CardHeader>
+          <CardTitle>Bets from My Users</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Bet ID</TableHead>
+                <TableHead>User ID</TableHead>
+                <TableHead>Game ID</TableHead>
+                <TableHead className="text-right">Amount (USD)</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {agentBetsData.map((bet) => (
+                <TableRow key={bet.id}>
+                  <TableCell className="font-medium">{bet.id}</TableCell>
+                  <TableCell>{bet.userId}</TableCell>
+                  <TableCell>{bet.gameId}</TableCell>
+                  <TableCell className="text-right">{bet.amount.toFixed(2)}</TableCell>
+                  <TableCell>
+                     <Badge variant={bet.status === 'won' ? 'default' : bet.status === 'lost' ? 'destructive' : 'outline'}>
+                      {bet.status}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
