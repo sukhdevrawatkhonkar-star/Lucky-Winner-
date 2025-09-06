@@ -10,9 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { IndianRupee, Wallet, Loader2, ArrowLeft, Lock, Star } from 'lucide-react';
 import { UserProfile, BetType, Lottery, BetTime } from '@/lib/types';
-import { placeBet } from '@/app/actions';
+import { listLotteryGames, placeBet } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { LOTTERIES } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { auth } from '@/lib/firebase';
@@ -295,21 +294,29 @@ export function GamePlay({ gameName, user }: GamePlayProps) {
     const [marketClose, setMarketClose] = useState({ isOpen: false, message: '' });
 
     useEffect(() => {
-        const game = LOTTERIES.find(g => g.name === gameName);
-        if (game) {
-            setGameDetails(game);
+        async function fetchGamesAndSetDetails() {
+            const games = await listLotteryGames();
+            const game = games.find(g => g.name === gameName);
+            if (game) {
+                setGameDetails(game);
+            }
         }
+        fetchGamesAndSetDetails();
+    }, [gameName]);
+
+    useEffect(() => {
+        if (!gameDetails) return;
 
         const checkMarketStatus = () => {
-             if (!game || !game.openTime || !game.closeTime) {
+             if (!gameDetails.openTime || !gameDetails.closeTime) {
                 setMarketOpen({ isOpen: true, message: 'Market is open 24/7.' });
                 setMarketClose({ isOpen: true, message: '' });
                 return;
             }
 
             const now = getCurrentISTTime();
-            const openTime = game.openTime;
-            const closeTime = game.closeTime;
+            const openTime = gameDetails.openTime;
+            const closeTime = gameDetails.closeTime;
 
             const isOpenMarket = now < openTime;
             setMarketOpen({
@@ -329,7 +336,7 @@ export function GamePlay({ gameName, user }: GamePlayProps) {
 
         return () => clearInterval(interval);
 
-    }, [gameName]);
+    }, [gameDetails]);
 
     const handleBetPlaced = () => {
         // The parent component's onSnapshot listener will automatically update the user prop

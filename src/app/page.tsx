@@ -7,11 +7,11 @@ import { Header } from '@/components/Header';
 import { Marquee } from '@/components/Marquee';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { LOTTERIES } from '@/lib/constants';
-import type { LotteryResult } from '@/lib/types';
+import type { LotteryResult, Lottery } from '@/lib/types';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { listLotteryGames } from './actions';
 
 function GameCard({ name, result }: { name: string; result?: LotteryResult }) {
     const getResultDisplay = () => {
@@ -92,11 +92,22 @@ function AppFooter() {
 }
 
 export default function HomePage() {
+  const [lotteries, setLotteries] = useState<Lottery[]>([]);
   const [results, setResults] = useState<Record<string, LotteryResult>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!db) return;
+    async function fetchGames() {
+        setLoading(true);
+        const games = await listLotteryGames();
+        setLotteries(games);
+        // We set loading to false here, but the results listener will continue to update.
+        // This provides a faster initial render of the game cards.
+        setLoading(false);
+    }
+    
+    fetchGames();
+    
     const resultsCollectionRef = collection(db, 'results');
     const unsubscribeResults = onSnapshot(resultsCollectionRef, (snapshot) => {
         const newResults: Record<string, LotteryResult> = {};
@@ -104,10 +115,8 @@ export default function HomePage() {
             newResults[doc.id] = { lotteryName: doc.id, ...doc.data() } as LotteryResult;
         });
         setResults(newResults);
-        setLoading(false);
     }, (error) => {
         console.error("Error fetching results: ", error);
-        setLoading(false);
     });
 
     return () => {
@@ -128,7 +137,7 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {loading 
                     ? Array.from({ length: 8 }).map((_, i) => <GameCardSkeleton key={i} />)
-                    : LOTTERIES.map((lottery) => (
+                    : lotteries.map((lottery) => (
                         <GameCard key={lottery.name} name={lottery.name} result={results[lottery.name]} />
                     ))
                 }

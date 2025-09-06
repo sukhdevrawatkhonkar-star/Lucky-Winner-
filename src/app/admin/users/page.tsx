@@ -24,128 +24,14 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { ManageWalletDialog, SetWalletLimitDialog } from '@/components/shared/UserActionsDialogs';
+import { CreateUserForm } from '@/components/shared/CreateUserForm';
 
-
-function CreateUserDialog({ onUserCreated }: { onUserCreated: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [agentCustomId, setAgentCustomId] = useState('no-agent');
-  const [agents, setAgents] = useState<UserProfile[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingAgents, setLoadingAgents] = useState(true);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (open) {
-      setLoadingAgents(true);
-      listUsers('agent').then(agentList => {
-        setAgents(agentList);
-        setLoadingAgents(false);
-      });
-    }
-  }, [open]);
-
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    if (password.length < 6) {
-        toast({
-            title: 'Weak Password',
-            description: 'Password must be at least 6 characters long.',
-            variant: 'destructive',
-        });
-        setLoading(false);
-        return;
-    }
-
-    const result = await createUser(name, email, password, mobile, agentCustomId);
-
-    if (result.success) {
-      toast({ title: 'Success', description: result.message });
-      setName('');
-      setEmail('');
-      setPassword('');
-      setMobile('');
-      setAgentCustomId('no-agent');
-      onUserCreated();
-      setOpen(false);
-    } else {
-      toast({ title: 'Error', description: result.message, variant: 'destructive' });
-    }
-    setLoading(false);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-            <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Create User
-            </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-                <DialogTitle>Create New User</DialogTitle>
-                <DialogDescription>
-                    A unique 6-digit Customer ID will be generated automatically.
-                </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateUser} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name-admin">User Full Name</Label>
-                <Input id="name-admin" type="text" placeholder="e.g. Rahul Kumar" required value={name} onChange={(e) => setName(e.target.value)} disabled={loading} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email-admin">User Email</Label>
-                <Input id="email-admin" type="email" placeholder="user@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="mobile-admin">Mobile</Label>
-                <Input id="mobile-admin" type="tel" placeholder="User's mobile number" required value={mobile} onChange={(e) => setMobile(e.target.value)} disabled={loading} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password-admin">Password</Label>
-                <Input id="password-admin" type="password" placeholder="•••••••• (min. 6 characters)" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="agent-select">Assign to Agent (Optional)</Label>
-                <Select value={agentCustomId} onValueChange={setAgentCustomId} disabled={loading || loadingAgents}>
-                    <SelectTrigger id="agent-select">
-                        <SelectValue placeholder="Select an agent..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="no-agent">No Agent (Admin User)</SelectItem>
-                        {agents.map(agent => (
-                            <SelectItem key={agent.uid} value={agent.customId}>{agent.email} ({agent.customId})</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-              </div>
-              <DialogFooter>
-                  <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                  <Button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create User'}</Button>
-              </DialogFooter>
-            </form>
-        </DialogContent>
-    </Dialog>
-  );
-}
 
 function ChangeAgentDialog({ user, onAgentChanged }: { user: UserProfile, onAgentChanged: () => void }) {
   const [open, setOpen] = useState(false);
@@ -185,34 +71,14 @@ function ChangeAgentDialog({ user, onAgentChanged }: { user: UserProfile, onAgen
             <Button variant="outline" size="sm">Change Agent</Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-                <DialogTitle>Change Agent for {user.email}</DialogTitle>
-                <DialogDescription>
-                    Re-assign this user to a different agent or manage them directly as an admin.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="agent-reassign-select">Assign to Agent</Label>
-                <Select value={newAgentId} onValueChange={setNewAgentId} disabled={loading || loadingAgents}>
-                    <SelectTrigger id="agent-reassign-select">
-                        <SelectValue placeholder="Select an agent..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="no-agent">No Agent (Admin User)</SelectItem>
-                        {agents.map(agent => (
-                            <SelectItem key={agent.uid} value={agent.customId}>{agent.email} ({agent.customId})</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-                <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                <Button onClick={handleUpdateAgent} disabled={loading}>
-                    {loading ? 'Saving...' : 'Save Changes'}
-                </Button>
-            </DialogFooter>
+             <CreateUserForm
+                role="user"
+                onAccountCreated={onAgentChanged}
+                agents={agents}
+                title={`Change Agent for ${user.email}`}
+                description="Re-assign this user to a different agent or manage them directly as an admin."
+                onClose={() => setOpen(false)}
+             />
         </DialogContent>
     </Dialog>
   );
@@ -225,6 +91,7 @@ export default function UsersPage() {
   const [searchField, setSearchField] = useState<'customId' | 'email' | 'mobile'>('customId');
   const [agentFilter, setAgentFilter] = useState('all');
   const [agents, setAgents] = useState<UserProfile[]>([]);
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -285,7 +152,24 @@ export default function UsersPage() {
         <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold">Manage Users</h1>
             <div className='flex items-center gap-2'>
-                 <CreateUserDialog onUserCreated={fetchUsersAndAgents} />
+                 <Dialog open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Create User
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                         <CreateUserForm 
+                            role="user" 
+                            onAccountCreated={fetchUsersAndAgents} 
+                            agents={agents} 
+                            title="Create New User" 
+                            description="A unique 6-digit Customer ID will be generated automatically."
+                            onClose={() => setIsCreateUserOpen(false)}
+                         />
+                    </DialogContent>
+                </Dialog>
                  <Button variant="outline" size="sm" onClick={fetchUsersAndAgents} disabled={loading}>
                     <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
                     <span className="ml-2 hidden sm:inline">Refresh</span>

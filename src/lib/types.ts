@@ -20,12 +20,13 @@ export interface UserProfile {
 }
 
 export type Lottery = {
+  id?: string;
   name: string;
-  jackpot: number;
-  drawDate: Date;
-  logo: string;
-  openTime?: string;
-  closeTime?: string;
+  jackpot?: number;
+  drawDate?: Date;
+  logo?: string;
+  openTime?: string | null;
+  closeTime?: string | null;
 };
 
 export type LotteryResult = {

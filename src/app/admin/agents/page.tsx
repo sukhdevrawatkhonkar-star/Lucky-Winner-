@@ -4,10 +4,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { createAgent, listUsers, updateUserStatus, deleteUser } from '@/app/actions';
+import { listUsers, updateUserStatus, deleteUser } from '@/app/actions';
 import { UserProfile } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -23,120 +21,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { ManageWalletDialog, SetWalletLimitDialog } from '@/components/shared/UserActionsDialogs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-
-function CreateAgentCard({ onAgentCreated }: { onAgentCreated: () => void }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-
-  const handleCreateAgent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    if (password.length < 6) {
-        toast({
-            title: 'Weak Password',
-            description: 'Password must be at least 6 characters long.',
-            variant: 'destructive',
-        });
-        setLoading(false);
-        return;
-    }
-
-    const result = await createAgent(name, email, mobile, password);
-
-    if (result.success) {
-      toast({
-        title: 'Success',
-        description: result.message,
-      });
-      setName('');
-      setEmail('');
-      setMobile('');
-      setPassword('');
-      onAgentCreated();
-    } else {
-      toast({
-        title: 'Error',
-        description: result.message,
-        variant: 'destructive',
-      });
-    }
-
-    setLoading(false);
-  };
-
-  return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Create New Agent</CardTitle>
-        <CardDescription>Enter the details for the new agent account. A unique 6-digit Agent ID will be generated.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleCreateAgent} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Agent Name</Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="e.g. Suresh Kumar"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Agent Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="agent@example.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-           <div className="space-y-2">
-            <Label htmlFor="mobile">Mobile Number</Label>
-            <Input
-              id="mobile"
-              type="tel"
-              placeholder="Agent's mobile number"
-              required
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="•••••••• (min. 6 characters)"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Creating Agent...' : 'Create Agent'}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
+import { Input } from '@/components/ui/input';
+import { CreateUserForm } from '@/components/shared/CreateUserForm';
 
 
 export default function AgentsPage() {
@@ -145,6 +39,7 @@ export default function AgentsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchField, setSearchField] = useState<'customId' | 'email' | 'mobile'>('customId');
+  const [isCreateAgentOpen, setIsCreateAgentOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchAgents = useCallback(async () => {
@@ -199,9 +94,21 @@ export default function AgentsPage() {
                 <span className="ml-2 hidden sm:inline">Refresh</span>
             </Button>
         </div>
-       <div className="grid md:grid-cols-2 gap-6">
-          <CreateAgentCard onAgentCreated={fetchAgents} />
-       </div>
+        <Dialog open={isCreateAgentOpen} onOpenChange={setIsCreateAgentOpen}>
+            <DialogTrigger asChild>
+                 <Button>Create Agent</Button>
+            </DialogTrigger>
+            <DialogContent>
+                 <CreateUserForm 
+                    role="agent" 
+                    onAccountCreated={fetchAgents}
+                    title="Create New Agent"
+                    description="Enter the details for the new agent account. A unique 6-digit Agent ID will be generated."
+                    onClose={() => setIsCreateAgentOpen(false)}
+                 />
+            </DialogContent>
+        </Dialog>
+
       
       <Card>
         <CardHeader>

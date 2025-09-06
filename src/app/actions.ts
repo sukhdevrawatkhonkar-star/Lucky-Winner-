@@ -2,10 +2,9 @@
 'use server';
 
 import { adminAuth, adminDb, FieldValue } from '@/lib/firebase/admin';
-import type { UserProfile, UserRole, Transaction, Bet, BetType, WithdrawalRequest, GameSettings, DepositRequest, LotteryResult } from '@/lib/types';
+import type { UserProfile, UserRole, Transaction, Bet, BetType, WithdrawalRequest, GameSettings, DepositRequest, LotteryResult, Lottery } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
-import { HttpsError } from 'firebase-functions/v1/auth';
 import Papa from 'papaparse';
 
 // --- Helper Functions ---
@@ -1054,5 +1053,63 @@ export async function processBankStatement(
     } catch (error: any) {
         console.error("Error processing bank statement:", error);
         return { success: false, message: 'Failed to parse or process the file. Please ensure it is a valid CSV.', processedCount: 0, notFoundCount: 0 };
+    }
+}
+
+// Game Management Actions
+export async function createLotteryGame(authToken: string, game: Omit<Lottery, 'id'>): Promise<{ success: boolean, message: string }> {
+    const user = await getAuthorizedUser(authToken);
+    if (!user || user.role !== 'admin') {
+        return { success: false, message: "Unauthorized." };
+    }
+
+    try {
+        const gameRef = adminDb.collection('lotteries').doc(game.name);
+        const doc = await gameRef.get();
+        if (doc.exists) {
+            return { success: false, message: `Game with name "${game.name}" already exists.` };
+        }
+        await gameRef.set(game);
+        revalidatePath('/'); // Revalidate home page to show new game
+        return { success: true, message: `Game "${game.name}" created successfully.` };
+    } catch (error: any) {
+        return { success: false, message: error.message };
+    }
+}
+
+export async function listLotteryGames(): Promise<Lottery[]> {
+    // This can be public as game list is not sensitive
+    const snapshot = await adminDb.collection('lotteries').orderBy('name').get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lottery));
+}
+
+export async function updateLotteryGameTimes(authToken: string, gameId: string, openTime: string | null, closeTime: string | null): Promise<{ success: boolean, message: string, updatedGame?: Lottery }> {
+    const user = await getAuthorizedUser(authToken);
+    if (!user || user.role !== 'admin') {
+        return { success: false, message: "Unauthorized." };
+    }
+     try {
+        const gameRef = adminDb.collection('lotteries').doc(gameId);
+        await gameRef.update({ openTime, closeTime });
+        const updatedDoc = await gameRef.get();
+        const updatedGame = { id: updatedDoc.id, ...updatedDoc.data() } as Lottery;
+        revalidatePath('/');
+        return { success: true, message: `Timings for "${gameId}" updated.`, updatedGame };
+    } catch (error: any) {
+        return { success: false, message: error.message };
+    }
+}
+
+export async function deleteLotteryGame(authToken: string, gameId: string): Promise<{ success: boolean, message: string }> {
+     const user = await getAuthorizedUser(authToken);
+    if (!user || user.role !== 'admin') {
+        return { success: false, message: "Unauthorized." };
+    }
+    try {
+        await adminDb.collection('lotteries').doc(gameId).delete();
+        revalidatePath('/');
+        return { success: true, message: 'Game deleted successfully.' };
+    } catch (error: any) {
+        return { success: false, message: error.message };
     }
 }

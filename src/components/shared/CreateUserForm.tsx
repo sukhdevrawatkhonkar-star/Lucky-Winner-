@@ -7,9 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createUser } from '@/app/actions';
+import { createAgent, createUser } from '@/app/actions';
 import { UserProfile } from '@/lib/types';
-import { auth } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 import { DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
@@ -17,31 +16,23 @@ interface CreateUserFormProps {
     role: 'user' | 'agent';
     onAccountCreated: () => void;
     agents?: UserProfile[];
-    agentCustomId?: string;
     title: string;
     description: string;
     onClose: () => void;
 }
 
-export function CreateUserForm({ role, onAccountCreated, agents, agentCustomId, title, description, onClose }: CreateUserFormProps) {
+export function CreateUserForm({ role, onAccountCreated, agents, title, description, onClose }: CreateUserFormProps) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [mobile, setMobile] = useState('');
-    const [assignedAgentId, setAssignedAgentId] = useState(agentCustomId || 'no-agent');
+    const [assignedAgentId, setAssignedAgentId] = useState('no-agent');
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
     const handleCreateAccount = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-
-        const currentUser = auth.currentUser;
-        if (!currentUser) {
-            toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
-            setLoading(false);
-            return;
-        }
 
         if (password.length < 6) {
             toast({ title: 'Weak Password', description: 'Password must be at least 6 characters long.', variant: 'destructive' });
@@ -50,13 +41,13 @@ export function CreateUserForm({ role, onAccountCreated, agents, agentCustomId, 
         }
 
         try {
-            const result = await createUser(
-                name,
-                email,
-                password,
-                mobile,
-                role === 'user' ? assignedAgentId : undefined
-            );
+            let result;
+            if (role === 'agent') {
+                result = await createAgent(name, email, mobile, password);
+            } else {
+                result = await createUser(name, email, password, mobile, assignedAgentId);
+            }
+            
 
             if (result.success) {
                 toast({ title: 'Success', description: result.message });
@@ -64,7 +55,7 @@ export function CreateUserForm({ role, onAccountCreated, agents, agentCustomId, 
                 setEmail('');
                 setPassword('');
                 setMobile('');
-                setAssignedAgentId(agentCustomId || 'no-agent');
+                setAssignedAgentId('no-agent');
                 onAccountCreated();
                 onClose();
             } else {
@@ -104,7 +95,7 @@ export function CreateUserForm({ role, onAccountCreated, agents, agentCustomId, 
                     <Label htmlFor={`password-${role}`}>Password</Label>
                     <Input id={`password-${role}`} type="password" placeholder="•••••••• (min. 6 characters)" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} />
                 </div>
-                {role === 'user' && agents && !agentCustomId && (
+                {role === 'user' && agents && (
                     <div className="space-y-2">
                         <Label htmlFor="agent-select">Assign to Agent (Optional)</Label>
                         <Select value={assignedAgentId} onValueChange={setAssignedAgentId} disabled={loading}>
