@@ -25,6 +25,11 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -71,14 +76,36 @@ function ChangeAgentDialog({ user, onAgentChanged }: { user: UserProfile, onAgen
             <Button variant="outline" size="sm">Change Agent</Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
-             <CreateUserForm
-                role="user"
-                onAccountCreated={onAgentChanged}
-                agents={agents}
-                title={`Change Agent for ${user.email}`}
-                description="Re-assign this user to a different agent or manage them directly as an admin."
-                onClose={() => setOpen(false)}
-             />
+            <DialogHeader>
+                <DialogTitle>Change Agent for {user.email}</DialogTitle>
+                <DialogDescription>
+                    Re-assign this user to a different agent or manage them directly as an admin.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="agent-select-change">Assign to Agent</Label>
+                    <Select value={newAgentId} onValueChange={setNewAgentId} disabled={loadingAgents}>
+                        <SelectTrigger id="agent-select-change">
+                            <SelectValue placeholder="Select an agent..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="no-agent">No Agent (Admin User)</SelectItem>
+                            {agents.map(agent => (
+                                <SelectItem key={agent.uid} value={agent.customId}>{agent.name} ({agent.customId})</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                </DialogClose>
+                <Button onClick={handleUpdateAgent} disabled={loading}>
+                    {loading ? 'Updating...' : 'Update Agent'}
+                </Button>
+            </DialogFooter>
         </DialogContent>
     </Dialog>
   );
