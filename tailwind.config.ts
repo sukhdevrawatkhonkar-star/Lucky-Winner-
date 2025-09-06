@@ -65,7 +65,7 @@ const config = {
       },
       fontFamily: {
         sans: ["var(--font-sans)", "sans-serif"],
-        cinzel: ["var(--font-cinzel)", "serif"],
+        cinzel: ["Cinzel", "serif"],
       },
       keyframes: {
         "accordion-down": {

@@ -7,11 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createUserAccount } from '@/app/actions';
+import { createUser } from '@/app/actions';
 import { UserProfile } from '@/lib/types';
 import { auth } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
-import { DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 interface CreateUserFormProps {
     role: 'user' | 'agent';
@@ -20,14 +20,15 @@ interface CreateUserFormProps {
     agentCustomId?: string;
     title: string;
     description: string;
+    onClose: () => void;
 }
 
-export function CreateUserForm({ role, onAccountCreated, agents, agentCustomId, title, description }: CreateUserFormProps) {
+export function CreateUserForm({ role, onAccountCreated, agents, agentCustomId, title, description, onClose }: CreateUserFormProps) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [mobile, setMobile] = useState('');
-    const [assignedAgentId, setAssignedAgentId] = useState('no-agent');
+    const [assignedAgentId, setAssignedAgentId] = useState(agentCustomId || 'no-agent');
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
@@ -49,14 +50,13 @@ export function CreateUserForm({ role, onAccountCreated, agents, agentCustomId, 
         }
 
         try {
-            const token = await currentUser.getIdToken();
-            const result = await createUserAccount(token, role, {
+            const result = await createUser(
                 name,
                 email,
                 password,
                 mobile,
-                agentCustomId: role === 'user' ? (agentCustomId || assignedAgentId) : undefined,
-            });
+                role === 'user' ? assignedAgentId : undefined
+            );
 
             if (result.success) {
                 toast({ title: 'Success', description: result.message });
@@ -64,8 +64,9 @@ export function CreateUserForm({ role, onAccountCreated, agents, agentCustomId, 
                 setEmail('');
                 setPassword('');
                 setMobile('');
-                setAssignedAgentId('no-agent');
+                setAssignedAgentId(agentCustomId || 'no-agent');
                 onAccountCreated();
+                onClose();
             } else {
                 toast({ title: 'Error', description: result.message, variant: 'destructive' });
             }
@@ -119,12 +120,13 @@ export function CreateUserForm({ role, onAccountCreated, agents, agentCustomId, 
                         </Select>
                     </div>
                 )}
-                <div className="pt-4">
-                    <Button type="submit" className="w-full" disabled={loading}>
+                 <DialogFooter>
+                    <DialogClose asChild><Button variant="outline" type="button">Cancel</Button></DialogClose>
+                    <Button type="submit" disabled={loading}>
                         {loading ? <Loader2 className="animate-spin mr-2" /> : null}
                         {loading ? 'Creating...' : `Create ${roleLabel}`}
                     </Button>
-                </div>
+                </DialogFooter>
             </form>
         </>
     )
