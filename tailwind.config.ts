@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss"
 
 const config = {
@@ -65,7 +64,7 @@ const config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["var(--font-alegreya)", "sans-serif"],
+        sans: ["var(--font-sans)", "sans-serif"],
         cinzel: ["var(--font-cinzel)", "serif"],
       },
       keyframes: {

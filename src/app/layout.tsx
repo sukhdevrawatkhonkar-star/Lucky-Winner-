@@ -1,20 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { Alegreya, Cinzel } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/components/AuthProvider';
 
-const alegreya = Alegreya({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-alegreya',
-});
-
-const cinzel = Cinzel({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-cinzel',
-});
+const inter = Inter({ subsets: ['latin'] });
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://lucky-winner.com';
 
@@ -83,8 +73,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${alegreya.variable} ${cinzel.variable}`}>
-      <body>
+    <html lang="en">
+      <body className={inter.className}>
         <AuthProvider>{children}</AuthProvider>
         <Toaster />
       </body>
