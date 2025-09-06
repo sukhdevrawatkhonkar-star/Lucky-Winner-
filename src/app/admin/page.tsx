@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
 
 
 interface DashboardStats {
@@ -23,17 +26,33 @@ interface DashboardStats {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
-    const fetchedStats = await getDashboardStats();
-    setStats(fetchedStats);
-    setLoading(false);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (token) {
+        const fetchedStats = await getDashboardStats();
+        setStats(fetchedStats);
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchStats();
+      } else {
+        router.push('/login');
+      }
+    });
+    return () => unsubscribe();
+  }, [fetchStats, router]);
 
 
   return (

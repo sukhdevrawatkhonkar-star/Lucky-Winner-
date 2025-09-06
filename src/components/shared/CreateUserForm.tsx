@@ -19,14 +19,15 @@ interface CreateUserFormProps {
     title: string;
     description: string;
     onClose: () => void;
+    agentCustomId?: string; // For agent creating a user
 }
 
-export function CreateUserForm({ role, onAccountCreated, agents, title, description, onClose }: CreateUserFormProps) {
+export function CreateUserForm({ role, onAccountCreated, agents, title, description, onClose, agentCustomId }: CreateUserFormProps) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [mobile, setMobile] = useState('');
-    const [assignedAgentId, setAssignedAgentId] = useState('no-agent');
+    const [assignedAgentId, setAssignedAgentId] = useState(agentCustomId || 'no-agent');
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
@@ -98,7 +99,7 @@ export function CreateUserForm({ role, onAccountCreated, agents, title, descript
                 {role === 'user' && agents && (
                     <div className="space-y-2">
                         <Label htmlFor="agent-select">Assign to Agent (Optional)</Label>
-                        <Select value={assignedAgentId} onValueChange={setAssignedAgentId} disabled={loading}>
+                        <Select value={assignedAgentId} onValueChange={setAssignedAgentId} disabled={loading || !!agentCustomId}>
                             <SelectTrigger id="agent-select">
                                 <SelectValue placeholder="Select an agent..." />
                             </SelectTrigger>

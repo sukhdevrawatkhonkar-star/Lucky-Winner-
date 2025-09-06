@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -39,6 +40,7 @@ export default function AgentUsersPage() {
             const token = await user.getIdTokenResult();
             if (token.claims.role === 'agent') {
                  const userDoc = await auth.currentUser?.getIdTokenResult();
+                 // @ts-ignore
                  const customId = userDoc?.claims.customId;
                  setAgent({uid: user.uid, customId});
                  fetchUsers(user.uid);
