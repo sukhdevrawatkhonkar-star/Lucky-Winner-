@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-// This would come from your database, filtered for the current agent
+// Ye data aapke database se agent ke users ke liye aayega
 const agentUsersData = [
     { id: "USER01", name: "Alice", email: "user1@example.com", totalBet: 1500.00, status: "Active" },
     { id: "USER02", name: "Bob", email: "user2@example.com", totalBet: 850.50, status: "Active" },
