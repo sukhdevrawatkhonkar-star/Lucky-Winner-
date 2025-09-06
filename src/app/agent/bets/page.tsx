@@ -43,7 +43,11 @@ export default function AgentBetsPage() {
                   <TableCell>{bet.gameId}</TableCell>
                   <TableCell className="text-right">{bet.amount.toFixed(2)}</TableCell>
                   <TableCell>
-                     <Badge variant={bet.status === 'won' ? 'default' : bet.status === 'lost' ? 'destructive' : 'outline'}>
+                     <Badge variant={
+                      bet.status === 'won' ? 'default' : 
+                      bet.status === 'lost' ? 'destructive' : 
+                      'outline'
+                    }>
                       {bet.status}
                     </Badge>
                   </TableCell>
