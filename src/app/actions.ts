@@ -2,7 +2,7 @@
 'use server';
 
 import { adminAuth, adminDb, FieldValue } from '@/lib/firebase/admin';
-import type { UserProfile, UserRole, Transaction, Bet, BetType, WithdrawalRequest, GameSettings, DepositRequest, LotteryResult, Lottery } from '@/lib/types';
+import type { UserProfile, UserRole, Transaction, Bet, BetType, WithdrawalRequest, GameSettings, DepositRequest, LotteryResult, Lottery, BetTime } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import Papa from 'papaparse';
@@ -38,6 +38,124 @@ const getAuthorizedUser = async (authToken?: string): Promise<{ uid: string; rol
     }
 };
 
+const getGameSettingsForProcessing = async () => {
+    const docRef = adminDb.collection('settings').doc('payoutRates');
+    const doc = await docRef.get();
+    if (!doc.exists) {
+        return {
+            rates: { single_ank: 9.5, jodi: 95, single_panna: 150, double_panna: 300, triple_panna: 1000, starline: 9.5, half_sangam: 1000, full_sangam: 10000 },
+            commission: 0.05
+        };
+    }
+    const data = doc.data()!;
+    return { rates: data.rates, commission: data.commission };
+};
+
+const processWinners = async (
+    transaction: FirebaseFirestore.Transaction,
+    lotteryName: string,
+    resultType: 'open' | 'close',
+    winningAnk: string,
+    winningPanna: string,
+    winningJodi?: string
+) => {
+    const { rates: PAYOUT_RATES } = await getGameSettingsForProcessing();
+
+    const betTypeChecks: { type: BetType, time?: BetTime }[] = [
+        { type: 'single_ank', time: resultType },
+        { type: 'single_panna', time: resultType },
+        { type: 'double_panna', time: resultType },
+        { type: 'triple_panna', time: resultType },
+    ];
+    if (resultType === 'close') {
+        betTypeChecks.push({ type: 'jodi' });
+    }
+
+    for (const { type, time } of betTypeChecks) {
+        let betsQuery = adminDb.collection('bets')
+            .where('lotteryName', '==', lotteryName)
+            .where('status', '==', 'placed')
+            .where('betType', '==', type);
+        
+        if (time) {
+            betsQuery = betsQuery.where('betTime', '==', time);
+        }
+
+        const betsSnapshot = await transaction.get(betsQuery);
+
+        for (const betDoc of betsSnapshot.docs) {
+            const bet = betDoc.data() as Bet;
+            let isWinner = false;
+
+            switch (bet.betType) {
+                case 'single_ank': if (bet.numbers === winningAnk) isWinner = true; break;
+                case 'jodi': if (bet.numbers === winningJodi) isWinner = true; break;
+                case 'single_panna': case 'double_panna': case 'triple_panna': if (bet.numbers === winningPanna) isWinner = true; break;
+            }
+
+            if (isWinner) {
+                const payoutRate = PAYOUT_RATES[bet.betType];
+                const payoutAmount = bet.amount * payoutRate;
+                transaction.update(betDoc.ref, { status: 'won', payout: payoutAmount });
+
+                const userRef = adminDb.collection('users').doc(bet.userId);
+                transaction.update(userRef, {
+                    walletBalance: FieldValue.increment(payoutAmount),
+                    cashBalance: FieldValue.increment(payoutAmount)
+                });
+
+                const winTxRef = adminDb.collection('transactions').doc();
+                transaction.set(winTxRef, {
+                    fromId: 'game-pot', toId: bet.userId, toEmail: bet.userEmail,
+                    amount: payoutAmount, type: 'win', paymentType: 'cash',
+                    timestamp: new Date().toISOString(),
+                });
+            } else if (resultType === 'close') {
+                transaction.update(betDoc.ref, { status: 'lost' });
+            }
+        }
+    }
+};
+
+const processCommissions = async (transaction: FirebaseFirestore.Transaction, lotteryName: string) => {
+    const { commission: AGENT_COMMISSION_RATE } = await getGameSettingsForProcessing();
+    if (AGENT_COMMISSION_RATE <= 0) return;
+
+    const betsQuery = adminDb.collection('bets').where('lotteryName', '==', lotteryName);
+    const betsSnapshot = await transaction.get(betsQuery);
+    const agentBetTotals: Record<string, number> = {};
+
+    for (const betDoc of betsSnapshot.docs) {
+        const bet = betDoc.data() as Bet;
+        if (bet.agentId) {
+            agentBetTotals[bet.agentId] = (agentBetTotals[bet.agentId] || 0) + bet.amount;
+        }
+    }
+
+    for (const agentId in agentBetTotals) {
+        const totalBets = agentBetTotals[agentId];
+        const commissionAmount = totalBets * AGENT_COMMISSION_RATE;
+
+        if (commissionAmount > 0) {
+            const agentRef = adminDb.collection('users').doc(agentId);
+            const agentDoc = await transaction.get(agentRef);
+            if (agentDoc.exists) {
+                const agentEmail = agentDoc.data()?.email || 'unknown-agent';
+                transaction.update(agentRef, {
+                    walletBalance: FieldValue.increment(commissionAmount),
+                    cashBalance: FieldValue.increment(commissionAmount)
+                });
+
+                const commissionTxRef = adminDb.collection('transactions').doc();
+                transaction.set(commissionTxRef, {
+                    fromId: 'admin', toId: agentId, toEmail: agentEmail,
+                    amount: commissionAmount, type: 'commission', paymentType: 'cash',
+                    timestamp: new Date().toISOString(),
+                });
+            }
+        }
+    }
+};
 
 /**
  * Handles user sign-in (Google or Email), creating a profile if one doesn't exist.
@@ -688,7 +806,7 @@ export async function declareResultManually(
     const resultLockRef = adminDb.collection('result_locks').doc(`${lotteryName}_${today}`);
 
     try {
-        await adminDb.runTransaction(async (transaction) => {
+        return await adminDb.runTransaction(async (transaction) => {
             const currentResultDoc = await transaction.get(resultDocRef);
             let resultData: Partial<LotteryResult>;
 
@@ -703,6 +821,8 @@ export async function declareResultManually(
                 };
                 transaction.set(resultDocRef, resultData, { merge: true });
                 transaction.set(resultLockRef, { openDeclared: true, manualOverride: true }, { merge: true });
+                
+                await processWinners(transaction, lotteryName, 'open', ank, panna);
 
             } else { // Close result
                 if (!currentResultDoc.exists || !currentResultDoc.data()?.openAnk) {
@@ -723,9 +843,18 @@ export async function declareResultManually(
                 };
                  transaction.set(resultDocRef, resultData, { merge: true });
                  transaction.set(resultLockRef, { closeDeclared: true, manualOverride: true }, { merge: true });
+
+                 await processWinners(transaction, lotteryName, 'close', ank, panna, jodi);
+                 
+                 const remainingBetsQuery = adminDb.collection('bets').where('lotteryName', '==', lotteryName).where('status', '==', 'placed');
+                 const remainingBetsSnap = await transaction.get(remainingBetsQuery);
+                 remainingBetsSnap.forEach(betDoc => transaction.update(betDoc.ref, { status: 'lost' }));
+
+                 await processCommissions(transaction, lotteryName);
             }
+
+            return { success: true, message: `${resultType.toUpperCase()} result for ${lotteryName} declared, and winners processed.` };
         });
-        return { success: true, message: `${resultType.toUpperCase()} result for ${lotteryName} declared successfully.` };
     } catch (error: any) {
         console.error("Error declaring manual result:", error);
         return { success: false, message: error.message };
@@ -1113,3 +1242,5 @@ export async function deleteLotteryGame(authToken: string, gameId: string): Prom
         return { success: false, message: error.message };
     }
 }
+
+    
