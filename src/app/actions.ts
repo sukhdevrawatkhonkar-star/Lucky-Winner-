@@ -110,8 +110,6 @@ const processWinners = async (
                     amount: payoutAmount, type: 'win', paymentType: 'cash',
                     timestamp: new Date().toISOString(),
                 });
-            } else if (resultType === 'close') {
-                transaction.update(betDoc.ref, { status: 'lost' });
             }
         }
     }
@@ -121,7 +119,11 @@ const processCommissions = async (transaction: FirebaseFirestore.Transaction, lo
     const { commission: AGENT_COMMISSION_RATE } = await getGameSettingsForProcessing();
     if (AGENT_COMMISSION_RATE <= 0) return;
 
-    const betsQuery = adminDb.collection('bets').where('lotteryName', '==', lotteryName);
+    // Only calculate commission on bets that have not yet been processed for commission.
+    const betsQuery = adminDb.collection('bets')
+      .where('lotteryName', '==', lotteryName)
+      .where('status', 'in', ['won', 'lost']);
+      
     const betsSnapshot = await transaction.get(betsQuery);
     const agentBetTotals: Record<string, number> = {};
 
