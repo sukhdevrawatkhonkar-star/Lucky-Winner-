@@ -6,6 +6,7 @@ import type { UserProfile, UserRole, Transaction, Bet, BetType, WithdrawalReques
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import Papa from 'papaparse';
+import { z } from 'zod';
 
 // --- Helper Functions ---
 
@@ -69,6 +70,8 @@ const processWinners = async (
     ];
     if (resultType === 'close') {
         betTypeChecks.push({ type: 'jodi' });
+        betTypeChecks.push({ type: 'half_sangam' });
+        betTypeChecks.push({ type: 'full_sangam' });
     }
 
     for (const { type, time } of betTypeChecks) {
@@ -86,12 +89,24 @@ const processWinners = async (
         for (const betDoc of betsSnapshot.docs) {
             const bet = betDoc.data() as Bet;
             let isWinner = false;
-
-            switch (bet.betType) {
-                case 'single_ank': if (bet.numbers === winningAnk) isWinner = true; break;
-                case 'jodi': if (bet.numbers === winningJodi) isWinner = true; break;
-                case 'single_panna': case 'double_panna': case 'triple_panna': if (bet.numbers === winningPanna) isWinner = true; break;
+            let finalWinningJodi = winningJodi;
+            
+            if(bet.betType === 'half_sangam' && winningJodi) {
+                // Half sangam can be open panna + close ank OR close panna + open ank
+                const openAnk = winningJodi.charAt(0);
+                const closeAnk = winningJodi.charAt(1);
+                if(bet.numbers === `${winningPanna}${closeAnk}` || bet.numbers === `${openAnk}${winningPanna}` ) isWinner = true;
+            } else if(bet.betType === 'full_sangam' && winningJodi){
+                 // full sangam is open panna + close panna, but jodi is used for simplicity
+                 if(bet.numbers.substring(0,2) === winningJodi) isWinner = true;
+            } else {
+                 switch (bet.betType) {
+                    case 'single_ank': if (bet.numbers === winningAnk) isWinner = true; break;
+                    case 'jodi': if (bet.numbers === finalWinningJodi) isWinner = true; break;
+                    case 'single_panna': case 'double_panna': case 'triple_panna': if (bet.numbers === winningPanna) isWinner = true; break;
+                }
             }
+
 
             if (isWinner) {
                 const payoutRate = PAYOUT_RATES[bet.betType];
@@ -111,7 +126,6 @@ const processWinners = async (
                     timestamp: new Date().toISOString(),
                 });
             } else if (resultType === 'close' && (!time || time === 'close')) {
-                // Mark non-winning bets as 'lost' only after the final (close) result for that bet type is declared
                  transaction.update(betDoc.ref, { status: 'lost' });
             }
         }
@@ -122,10 +136,9 @@ const processCommissions = async (transaction: FirebaseFirestore.Transaction, lo
     const { commission: AGENT_COMMISSION_RATE } = await getGameSettingsForProcessing();
     if (AGENT_COMMISSION_RATE <= 0) return;
 
-    // Only calculate commission on bets that have not yet been processed for commission.
     const betsQuery = adminDb.collection('bets')
       .where('lotteryName', '==', lotteryName)
-      .where('commissionProcessed', '==', false) // Only get unprocessed bets
+      .where('commissionProcessed', '==', false)
       .where('status', 'in', ['won', 'lost']);
       
     const betsSnapshot = await transaction.get(betsQuery);
@@ -136,7 +149,6 @@ const processCommissions = async (transaction: FirebaseFirestore.Transaction, lo
         if (bet.agentId) {
             agentBetTotals[bet.agentId] = (agentBetTotals[bet.agentId] || 0) + bet.amount;
         }
-        // Mark the bet as processed for commission to avoid double counting
         transaction.update(betDoc.ref, { commissionProcessed: true });
     }
 
@@ -318,7 +330,7 @@ export async function placeBet(betDetails: {
                 amount,
                 createdAt: new Date().toISOString(),
                 status: 'placed',
-                commissionProcessed: false, // Initialize commission status
+                commissionProcessed: false,
             };
 
             if (betTime) {
@@ -399,7 +411,6 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
                 pendingWithdrawals: pendingWithdrawalsSnapshot.size
             };
         }
-        // If not an admin and trying to fetch general stats, or if agentId doesn't match, return empty.
         return { totalUsers: 0, totalAgents: 0, totalBets: 0, totalRevenue: 0, totalCommission: 0, pendingDeposits: 0, pendingWithdrawals: 0 };
 
     } catch (error) {
@@ -459,7 +470,6 @@ export async function deleteUser(uid: string): Promise<{ success: boolean; messa
 }
 
 export async function createAdmin(email: string): Promise<{ success: boolean; message: string }> {
-     // This is a special setup function. It can be called without auth, but should be protected/removed post-setup.
     try {
         const user = await adminAuth.getUserByEmail(email);
         await adminAuth.setCustomUserClaims(user.uid, { role: 'admin' });
@@ -489,11 +499,6 @@ export async function updateUserProfile(uid: string, name: string, mobile: strin
 }
 
 export async function createUser(name: string, email: string, password: string, mobile: string, agentCustomId?: string): Promise<{ success: boolean; message: string }> {
-    // This can be called by an admin, an agent, or a new user registering.
-    // The auth check happens inside createAgent for agents/admins
-    // For public registration, no initial auth is needed.
-    
-    // --- Server-Side Input Validation ---
     if (!name || name.trim().length < 3) {
         return { success: false, message: 'Name must be at least 3 characters.' };
     }
@@ -507,7 +512,6 @@ export async function createUser(name: string, email: string, password: string, 
     if (!mobile || !/^\d{10,15}$/.test(mobile)) {
         return { success: false, message: 'Please provide a valid mobile number.' };
     }
-    // --- End Validation ---
 
     try {
         const userRecord = await adminAuth.createUser({
@@ -587,7 +591,6 @@ export async function createAgent(name: string, email: string, mobile: string, p
      if (!currentUser || currentUser.role !== 'admin') {
         return { success: false, message: "Unauthorized." };
     }
-     // --- Server-Side Input Validation ---
     if (!name || name.trim().length < 3) {
         return { success: false, message: 'Name must be at least 3 characters.' };
     }
@@ -601,7 +604,6 @@ export async function createAgent(name: string, email: string, mobile: string, p
     if (!mobile || !/^\d{10,15}$/.test(mobile)) {
         return { success: false, message: 'Please provide a valid mobile number.' };
     }
-    // --- End Validation ---
     
     try {
         const userRecord = await adminAuth.createUser({
@@ -641,11 +643,9 @@ export async function updateWalletBalance(
     amount: number,
     paymentType: 'cash' | 'credit'
 ): Promise<{ success: boolean; message: string }> {
-    // --- Server-Side Input Validation ---
     if (typeof amount !== 'number' || isNaN(amount) || amount === 0) {
         return { success: false, message: 'Invalid amount provided.' };
     }
-    // --- End Validation ---
 
     const currentUser = await getAuthorizedUser();
     if (!currentUser || !['admin', 'agent'].includes(currentUser.role)) {
@@ -667,7 +667,6 @@ export async function updateWalletBalance(
             const targetUserProfile = targetUserDoc.data() as UserProfile;
             const sourceUserProfile = sourceUserDoc.data() as UserProfile;
             
-            // Check for wallet limits
             const newBalance = (targetUserProfile.walletBalance || 0) + amount;
             if (targetUserProfile.walletLimit != null && newBalance > targetUserProfile.walletLimit) {
                 return { success: false, message: `Action failed. User's new balance would exceed their limit of ${targetUserProfile.walletLimit}.` };
@@ -679,14 +678,11 @@ export async function updateWalletBalance(
                  }
             }
 
-
-            // Update target user's balance
             transaction.update(targetUserRef, {
                 walletBalance: FieldValue.increment(amount),
                 [paymentType === 'cash' ? 'cashBalance' : 'creditBalance']: FieldValue.increment(amount)
             });
 
-            // If an agent is funding a user, deduct from the agent's balance
             if (currentUser.role === 'agent' && amount > 0) {
                  transaction.update(sourceUserRef, {
                     walletBalance: FieldValue.increment(-amount),
@@ -694,7 +690,6 @@ export async function updateWalletBalance(
                 });
             }
 
-            // Create transaction log
             const txRef = adminDb.collection('transactions').doc();
             transaction.set(txRef, {
                 fromId: amount > 0 ? currentUser.uid : targetUserId,
@@ -742,14 +737,13 @@ export async function listBets(userId?: string, agentId?: string): Promise<Bet[]
     } else if (currentUser.role === 'agent' && agentId === currentUser.uid) {
         query = query.where('agentId', '==', agentId);
     } else if (currentUser.role === 'admin') {
-        // Admin can see all bets, no filter needed unless specified
         if (userId) {
              query = query.where('userId', '==', userId);
         } else if (agentId) {
              query = query.where('agentId', '==', agentId);
         }
     } else {
-        return []; // Unauthorized request
+        return []; 
     }
 
     query = query.orderBy('createdAt', 'desc').limit(200);
@@ -765,12 +759,10 @@ export async function listTransactions(userId: string, role: UserRole): Promise<
     let query: FirebaseFirestore.Query;
     
     if (role === 'admin') {
-        // Admin sees all transactions they initiated (funding agents)
         query = adminDb.collection('transactions')
             .where('fromId', '==', userId)
             .where('type', '==', 'transfer');
     } else {
-        // Users and agents see transactions where they are either the sender or receiver
          const toQuery = adminDb.collection('transactions').where('toId', '==', userId);
          const fromQuery = adminDb.collection('transactions').where('fromId', '==', userId);
 
@@ -792,12 +784,9 @@ export async function listTransactions(userId: string, role: UserRole): Promise<
 export async function getGameSettings(): Promise<GameSettings> {
      const currentUser = await getAuthorizedUser(); 
      if (!currentUser) {
-        // For public pages like /rates, we don't require auth
-        // In a more secure app, you might only allow logged-in users
      }
     const doc = await adminDb.collection('settings').doc('payoutRates').get();
     if (!doc.exists) {
-        // Default values
         return {
             rates: {
                 single_ank: 9.5, jodi: 95, single_panna: 150, double_panna: 300, triple_panna: 1000, starline: 9.5, half_sangam: 1000, full_sangam: 10000
@@ -862,7 +851,7 @@ export async function declareResultManually(
                 
                 await processWinners(transaction, lotteryName, 'open', ank, panna);
 
-            } else { // Close result
+            } else {
                 if (!currentResultDoc.exists || !currentResultDoc.data()?.openAnk) {
                     throw new Error('Cannot declare close result before open result.');
                 }
@@ -958,7 +947,6 @@ export async function listWithdrawalRequests(agentId?: string): Promise<Withdraw
     if (currentUser.role === 'agent') {
         query = query.where('agentId', '==', currentUser.uid);
     }
-    // Admin sees all requests
 
     query = query.orderBy('requestedAt', 'desc').limit(100);
     const snapshot = await query.get();
@@ -1000,13 +988,11 @@ export async function processWithdrawalRequest(
                     throw new Error('User has insufficient cash balance.');
                 }
 
-                // Deduct from user's balance
                 transaction.update(userRef, {
                     walletBalance: FieldValue.increment(-requestData.amount),
                     cashBalance: FieldValue.increment(-requestData.amount),
                 });
 
-                // Create transaction log
                 const txRef = adminDb.collection('transactions').doc();
                 transaction.set(txRef, {
                     fromId: requestData.userId,
@@ -1020,7 +1006,6 @@ export async function processWithdrawalRequest(
                 });
             }
 
-            // Update request status
             transaction.update(requestRef, {
                 status: action === 'approve' ? 'approved' : 'rejected',
                 processedAt: new Date().toISOString(),
@@ -1120,13 +1105,11 @@ export async function processDepositRequest(
                     throw new Error('User to deposit to does not exist.');
                 }
 
-                // Add to user's balance
                 transaction.update(userRef, {
                     walletBalance: FieldValue.increment(requestData.amount),
                     cashBalance: FieldValue.increment(requestData.amount),
                 });
 
-                // Create transaction log
                 const txRef = adminDb.collection('transactions').doc();
                 transaction.set(txRef, {
                     fromId: processor.uid,
@@ -1140,7 +1123,6 @@ export async function processDepositRequest(
                 });
             }
 
-            // Update request status
             transaction.update(requestRef, {
                 status: action === 'approve' ? 'approved' : 'rejected',
                 processedAt: new Date().toISOString(),
@@ -1175,22 +1157,20 @@ export async function processBankStatement(
         let processedCount = 0;
         let notFoundCount = 0;
 
-        // Fetch all pending requests at once
         const pendingRequestsSnap = await adminDb.collection('deposits').where('status', '==', 'pending').get();
         const pendingRequests = pendingRequestsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as DepositRequest));
 
         for (const record of transactions) {
-            // Adjust these keys based on your bank's CSV format
             const transactionId = record['Transaction ID'] || record['Ref No'] || record['ID'] || record['transactionId'];
             const amountStr = record['Amount'] || record['Credit'] || record['amount'];
             
             if (!transactionId || !amountStr) {
-                continue; // Skip rows that don't have the required data
+                continue;
             }
             
             const amount = parseFloat(amountStr.replace(/,/g, ''));
             if (isNaN(amount) || amount <= 0) {
-                continue; // Skip if amount is not a valid positive number
+                continue;
             }
 
             const matchingRequest = pendingRequests.find(
@@ -1201,7 +1181,6 @@ export async function processBankStatement(
                 const result = await processDepositRequest(matchingRequest.id, 'approve');
                 if (result.success) {
                     processedCount++;
-                    // Remove the processed request from the array to prevent reprocessing
                     const index = pendingRequests.findIndex(r => r.id === matchingRequest.id);
                     if (index > -1) pendingRequests.splice(index, 1);
                 }
@@ -1237,7 +1216,7 @@ export async function createLotteryGame(authToken: string, game: Omit<Lottery, '
             return { success: false, message: `Game with name "${game.name}" already exists.` };
         }
         await gameRef.set(game);
-        revalidatePath('/'); // Revalidate home page to show new game
+        revalidatePath('/');
         return { success: true, message: `Game "${game.name}" created successfully.` };
     } catch (error: any) {
         return { success: false, message: error.message };
@@ -1245,7 +1224,6 @@ export async function createLotteryGame(authToken: string, game: Omit<Lottery, '
 }
 
 export async function listLotteryGames(): Promise<Lottery[]> {
-    // This can be public as game list is not sensitive
     const snapshot = await adminDb.collection('lotteries').orderBy('name').get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lottery));
 }
