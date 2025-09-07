@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { getHistoricalResults } from '@/app/actions';
 import type { LotteryResult } from '@/lib/types';
-import { Loader2, ArrowLeft, BarChart3 } from 'lucide-react';
+import { Loader2, ArrowLeft, BarChartBig } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -62,7 +62,7 @@ export default function ChartPage() {
                         <ArrowLeft />
                     </Button>
                     <div className="flex items-center gap-2">
-                        <BarChart3 className="h-7 w-7 text-primary" />
+                        <BarChartBig className="h-7 w-7 text-primary" />
                         <h1 className="text-3xl font-bold text-primary">{decodedGameName} Chart</h1>
                     </div>
                 </div>
