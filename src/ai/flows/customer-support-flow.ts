@@ -1,20 +1,28 @@
 import { defineFlow } from '@genkit-ai/flow';
-import { googleAI } from '@genkit-ai/googleai';
+import { ai } from '../genkit';
 
-// Example Customer Support Flow
 export const customerSupportFlow = defineFlow(
   {
-    name: 'customerSupport',
+    name: 'customerSupportFlow',
     inputSchema: {
-      query: 'string',
+      type: 'object',
+      properties: {
+        question: { type: 'string' },
+      },
+      required: ['question'],
     },
     outputSchema: {
-      response: 'string',
+      type: 'object',
+      properties: {
+        answer: { type: 'string' },
+      },
     },
   },
   async (input) => {
-    // Here you can call googleAI or any other LLM to generate response
-    const response = `Support team will get back to you regarding: ${input.query}`;
-    return { response };
+    const response = await ai.generate({
+      prompt: `Customer asked: ${input.question}\nProvide a helpful answer.`,
+    });
+
+    return { answer: response.outputText };
   }
 );

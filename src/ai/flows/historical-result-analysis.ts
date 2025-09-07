@@ -1,19 +1,28 @@
 import { defineFlow } from '@genkit-ai/flow';
-import { googleAI } from '@genkit-ai/googleai';
+import { ai } from '../genkit';
 
-// Example Historical Result Analysis Flow
-export const historicalResultAnalysisFlow = defineFlow(
+export const historicalResultAnalysis = defineFlow(
   {
     name: 'historicalResultAnalysis',
     inputSchema: {
-      numbers: 'array',
+      type: 'object',
+      properties: {
+        history: { type: 'string' },
+      },
+      required: ['history'],
     },
     outputSchema: {
-      analysis: 'string',
+      type: 'object',
+      properties: {
+        analysis: { type: 'string' },
+      },
     },
   },
   async (input) => {
-    const analysis = `Analysis complete. Total numbers analyzed: ${input.numbers.length}`;
-    return { analysis };
+    const response = await ai.generate({
+      prompt: `Analyze this lottery result history: ${input.history}`,
+    });
+
+    return { analysis: response.outputText };
   }
 );

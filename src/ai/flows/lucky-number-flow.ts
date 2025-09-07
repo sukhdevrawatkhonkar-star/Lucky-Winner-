@@ -1,20 +1,32 @@
 import { defineFlow } from '@genkit-ai/flow';
-import { googleAI } from '@genkit-ai/googleai';
+import { ai } from '../genkit';
 
-// Example Lucky Number Generator Flow
 export const luckyNumberFlow = defineFlow(
   {
     name: 'luckyNumberFlow',
     inputSchema: {
-      userId: 'string',
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+      },
+      required: ['name'],
     },
     outputSchema: {
-      luckyNumber: 'number',
+      type: 'object',
+      properties: {
+        luckyNumber: { type: 'number' },
+      },
     },
   },
   async (input) => {
-    // Just returning a random number for now
-    const luckyNumber = Math.floor(Math.random() * 100) + 1;
-    return { luckyNumber };
+    const response = await ai.generate({
+      prompt: `Based on the name "${input.name}", suggest a lucky number between 1 and 100.`,
+    });
+
+    // Try to extract number from response
+    const match = response.outputText.match(/\d+/);
+    const number = match ? parseInt(match[0], 10) : Math.floor(Math.random() * 100) + 1;
+
+    return { luckyNumber: number };
   }
 );
