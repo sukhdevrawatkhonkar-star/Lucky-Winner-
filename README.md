@@ -18,3 +18,4 @@ This is a Next.js application for an online lottery and gaming platform called "
 - **UI**: React, TypeScript, ShadCN UI, Tailwind CSS
 - **Authentication & Database**: Firebase (Authentication, Firestore)
 - **Generative AI**: Google AI with Genkit
+# Lucky-Winner-
