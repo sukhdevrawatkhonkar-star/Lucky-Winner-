@@ -66,6 +66,7 @@ export interface Bet {
   createdAt: string; // ISO string
   status: 'placed' | 'won' | 'lost';
   payout?: number;
+  commissionProcessed?: boolean;
 }
 
 export interface Transaction {

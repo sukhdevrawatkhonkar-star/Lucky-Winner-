@@ -110,6 +110,9 @@ const processWinners = async (
                     amount: payoutAmount, type: 'win', paymentType: 'cash',
                     timestamp: new Date().toISOString(),
                 });
+            } else if (resultType === 'close' && (!time || time === 'close')) {
+                // Mark non-winning bets as 'lost' only after the final (close) result for that bet type is declared
+                 transaction.update(betDoc.ref, { status: 'lost' });
             }
         }
     }
@@ -122,6 +125,7 @@ const processCommissions = async (transaction: FirebaseFirestore.Transaction, lo
     // Only calculate commission on bets that have not yet been processed for commission.
     const betsQuery = adminDb.collection('bets')
       .where('lotteryName', '==', lotteryName)
+      .where('commissionProcessed', '==', false) // Only get unprocessed bets
       .where('status', 'in', ['won', 'lost']);
       
     const betsSnapshot = await transaction.get(betsQuery);
@@ -132,6 +136,8 @@ const processCommissions = async (transaction: FirebaseFirestore.Transaction, lo
         if (bet.agentId) {
             agentBetTotals[bet.agentId] = (agentBetTotals[bet.agentId] || 0) + bet.amount;
         }
+        // Mark the bet as processed for commission to avoid double counting
+        transaction.update(betDoc.ref, { commissionProcessed: true });
     }
 
     for (const agentId in agentBetTotals) {
@@ -224,7 +230,6 @@ export async function placeBet(betDetails: {
         return { success: false, message: 'Invalid numbers provided.' };
     }
 
-    // --- Server-Side Input Validation ---
     const betTypeRules = {
         single_ank: { length: 1, label: 'Single Ank' },
         jodi: { length: 2, label: 'Jodi' },
@@ -239,7 +244,6 @@ export async function placeBet(betDetails: {
     if (!rule || numbers.length !== rule.length) {
         return { success: false, message: `Invalid numbers for ${rule?.label || betType}. Expected ${rule?.length || 'a different number of'} digits.` };
     }
-    // --- End Validation ---
 
     const user = await getAuthorizedUser(authToken);
     if (!user) {
@@ -247,14 +251,46 @@ export async function placeBet(betDetails: {
     }
 
     const userDocRef = adminDb.collection('users').doc(user.uid);
+    const lotteryDocRef = adminDb.collection('lotteries').doc(lotteryName);
 
     try {
         return await adminDb.runTransaction(async (transaction) => {
-            const userDoc = await transaction.get(userDocRef);
+            const [userDoc, lotteryDoc] = await Promise.all([
+                transaction.get(userDocRef),
+                transaction.get(lotteryDocRef)
+            ]);
+            
             if (!userDoc.exists) {
                 return { success: false, message: 'User not found.' };
             }
+            if (!lotteryDoc.exists) {
+                return { success: false, message: 'Game not found.' };
+            }
+
             const userProfile = userDoc.data() as UserProfile;
+            const lottery = lotteryDoc.data() as Lottery;
+
+            // --- Game Status Check ---
+            const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+            const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            let isMarketOpen = true;
+            if (lottery.openTime && lottery.closeTime) {
+                if (betType === 'jodi' || betType === 'half_sangam' || betType === 'full_sangam' || (betTime === 'open')) {
+                    if (currentTime >= lottery.openTime) {
+                        isMarketOpen = false;
+                    }
+                }
+                if (betTime === 'close') {
+                     if (currentTime >= lottery.closeTime) {
+                        isMarketOpen = false;
+                    }
+                }
+            }
+            if (!isMarketOpen) {
+                return { success: false, message: `Betting for ${lotteryName} ${betTime || ''} market is currently closed.` };
+            }
+            // --- End Game Status Check ---
 
             if (userProfile.disabled) {
                 return { success: false, message: 'Your account is disabled.' };
@@ -282,9 +318,9 @@ export async function placeBet(betDetails: {
                 amount,
                 createdAt: new Date().toISOString(),
                 status: 'placed',
+                commissionProcessed: false, // Initialize commission status
             };
 
-            // Only add betTime if it's provided and relevant
             if (betTime) {
                 betData.betTime = betTime;
             }
@@ -1244,5 +1280,3 @@ export async function deleteLotteryGame(authToken: string, gameId: string): Prom
         return { success: false, message: error.message };
     }
 }
-
-    
